@@ -1,0 +1,107 @@
+{
+  "name": "electron-telegram-channel-downloader",
+  "description": "A powerful cross-platform Telegram channel content downloader built with Electron and Vue 3",
+  "author": {
+    "name": "oooooh_hooooo",
+    "group": "https://t.me/channel_downloader_chat",
+    "url": "https://t.me/oooooh_hooooo"
+  },
+  "private": true,
+  "version": "1.0.0",
+  "main": "electron/main.js",
+  "homepage": "./",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:vite\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
+    "dev:vite": "vite --host",
+    "dev:electron": "cross-env ELECTRON_IS_DEV=1 electron .",
+    "build": "vite build && electron-builder",
+    "build:dir": "vite build && electron-builder --dir",
+    "build:win": "node scripts/build-windows.js",
+    "build:portable": "node scripts/build-portable.js",
+    "cleanup:win": "node scripts/cleanup-windows-install.js",
+    "build:mac": "vite build && electron-builder --mac",
+    "build:linux": "vite build && electron-builder --linux",
+    "build:win-simple": "vite build && electron-builder --win",
+    "preview": "vite preview",
+    "electron:dev": "electron .",
+    "electron:pack": "electron-builder --dir",
+    "electron:dist": "electron-builder"
+  },
+  "dependencies": {
+    "@mdi/font": "^7.4.47",
+    "pinia": "^3.0.3",
+    "vue": "^3.5.13",
+    "vue-i18n": "9",
+    "vuetify": "^3.8.9"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "vite": "^6.0.3",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.telegram.channel-downloader",
+    "productName": "Telegram Channel Downloader",
+    "copyright": "Copyright © 2025 @oooooh_hooooo",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.utilities",
+      "target": "dmg"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": "nsis",
+      "requestedExecutionLevel": "asInvoker",
+      "publisherName": "Telegram Channel Downloader",
+      "verifyUpdateCodeSignature": false,
+      "artifactName": "${productName}-${version}-Setup.${ext}",
+      "extraFiles": [
+        {
+          "from": "build/app.manifest",
+          "to": "app.manifest"
+        }
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Utility",
+      "target": "AppImage"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": false,
+      "perMachine": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "menuCategory": "Internet",
+      "shortcutName": "Telegram Channel Downloader",
+      "runAfterFinish": false,
+      "deleteAppDataOnUninstall": false,
+      "include": "build/installer.nsh",
+      "guid": "telegram-channel-downloader",
+      "warningsAsErrors": false,
+      "artifactName": "${productName} Setup ${version}.${ext}",
+      "language": "2052"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
+    }
+  }
+}

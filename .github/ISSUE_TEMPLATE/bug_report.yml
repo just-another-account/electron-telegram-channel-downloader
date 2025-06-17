@@ -1,0 +1,173 @@
+name: 🐛 Bug Report
+description: Report a bug to help us improve
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! 
+        
+        Before submitting, please:
+        - Search for existing issues to avoid duplicates
+        - Make sure you're using the latest version
+        - Try the troubleshooting steps in our [Troubleshooting Guide](../../docs/TROUBLESHOOTING.md)
+
+  - type: input
+    id: app-version
+    attributes:
+      label: Application Version
+      description: What version of the app are you using?
+      placeholder: "e.g., v1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating System
+      description: What operating system are you using?
+      options:
+        - Windows 10
+        - Windows 11
+        - macOS 10.15 (Catalina)
+        - macOS 11 (Big Sur)
+        - macOS 12 (Monterey)
+        - macOS 13 (Ventura)
+        - macOS 14 (Sonoma)
+        - Ubuntu 20.04
+        - Ubuntu 22.04
+        - Ubuntu 24.04
+        - Fedora 38
+        - Fedora 39
+        - Fedora 40
+        - Other Linux
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS Version Details
+      description: Specific version number or build (if not listed above)
+      placeholder: "e.g., Windows 11 22H2, macOS 14.2.1, Ubuntu 22.04.3"
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe the bug you encountered
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to...
+        2. Click on...
+        3. Enter...
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: A clear and concise description of what actually happened.
+      placeholder: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: error-messages
+    attributes:
+      label: Error Messages
+      description: If applicable, paste any error messages you received
+      placeholder: Paste error messages here
+      render: text
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain your problem
+      placeholder: Drag and drop screenshots here or click to upload
+
+  - type: dropdown
+    id: bug-frequency
+    attributes:
+      label: How often does this bug occur?
+      options:
+        - Always (every time)
+        - Often (most of the time)
+        - Sometimes (occasionally)
+        - Rarely (only happened once or twice)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: affected-features
+    attributes:
+      label: Affected Features
+      description: Which features are affected by this bug?
+      options:
+        - label: Authentication/Login
+        - label: Channel/Group listing
+        - label: Download configuration
+        - label: Download process
+        - label: File organization
+        - label: User interface
+        - label: Language/Internationalization
+        - label: Settings
+        - label: Other
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here
+      placeholder: |
+        - Hardware specs (RAM, storage, etc.)
+        - Network conditions
+        - Antivirus software
+        - Any other relevant information
+
+  - type: checkboxes
+    id: troubleshooting
+    attributes:
+      label: Troubleshooting Checklist
+      description: Please confirm you have tried these common solutions
+      options:
+        - label: I have updated to the latest version
+          required: true
+        - label: I have restarted the application
+          required: true
+        - label: I have checked the troubleshooting guide
+          required: true
+        - label: I have searched for existing issues
+          required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true 

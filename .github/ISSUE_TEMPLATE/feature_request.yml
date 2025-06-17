@@ -1,0 +1,173 @@
+name: 💡 Feature Request
+description: Suggest a new feature or improvement
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! 
+        
+        Before submitting, please:
+        - Search for existing feature requests to avoid duplicates
+        - Check if this feature is already planned in our roadmap
+        - Consider if this could be implemented as a community plugin
+
+  - type: textarea
+    id: problem-description
+    attributes:
+      label: Problem Description
+      description: What problem would this feature solve? What is the motivation?
+      placeholder: "Describe the problem or limitation you're facing..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you'd like this feature to work
+      placeholder: "Describe your ideal solution in detail..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions
+      description: Have you considered alternative solutions or workarounds?
+      placeholder: "Describe any alternative solutions you've considered..."
+
+  - type: dropdown
+    id: feature-category
+    attributes:
+      label: Feature Category
+      description: Which area of the application would this feature affect?
+      options:
+        - Authentication & Security
+        - User Interface & Experience
+        - Download Management
+        - File Organization
+        - Performance & Speed
+        - Language & Internationalization
+        - Settings & Configuration
+        - Telegram API Integration
+        - Cross-platform Support
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: user-type
+    attributes:
+      label: User Type
+      description: Who would benefit most from this feature?
+      options:
+        - All users
+        - Power users / Advanced users
+        - New users / Beginners
+        - Developers / Technical users
+        - Specific use case (explain below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-cases
+    attributes:
+      label: Use Cases
+      description: Provide specific examples of how this feature would be used
+      placeholder: |
+        Example scenarios:
+        1. When a user wants to...
+        2. A typical workflow would be...
+        3. This would help users who...
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups/Examples
+      description: If applicable, add mockups, screenshots, or examples
+      placeholder: Drag and drop images here or describe the visual design
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority Level
+      description: How important is this feature to you?
+      options:
+        - Critical (blocking current work)
+        - High (would significantly improve workflow)
+        - Medium (nice to have improvement)
+        - Low (minor enhancement)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: complexity
+    attributes:
+      label: Implementation Complexity (if known)
+      description: How complex do you think this feature would be to implement?
+      options:
+        - Simple (small UI change or setting)
+        - Medium (new component or feature)
+        - Complex (major architectural change)
+        - Unknown / Not sure
+
+  - type: checkboxes
+    id: implementation-details
+    attributes:
+      label: Implementation Considerations
+      description: What aspects should be considered during implementation?
+      options:
+        - label: Backward compatibility
+        - label: Performance impact
+        - label: Security implications
+        - label: Accessibility requirements
+        - label: Mobile/responsive design
+        - label: Internationalization support
+        - label: Cross-platform compatibility
+        - label: API rate limiting considerations
+
+  - type: textarea
+    id: technical-details
+    attributes:
+      label: Technical Details
+      description: Any technical specifications, API requirements, or implementation notes
+      placeholder: |
+        - Specific APIs needed
+        - Technical constraints
+        - Integration requirements
+        - Performance considerations
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you be willing to help implement this feature?
+      options:
+        - label: I would like to work on this feature myself
+        - label: I can provide testing and feedback
+        - label: I can help with documentation
+        - label: I can provide design assets
+        - label: I prefer to just suggest and let others implement
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context, research, or related links
+      placeholder: |
+        - Links to similar features in other apps
+        - Research or articles supporting this feature
+        - Community feedback or requests
+        - Any other relevant information
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true 
