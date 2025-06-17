@@ -135,11 +135,15 @@
     "currentToken": "Current Session Token",
     "tokenDescription": "You can save this token for quick login next time",
     "securityTip": "Security Tip",
-    "tokenSecurityMessage": "Please keep your token safe and do not share it with others. Token is equivalent to your login credentials.",
-    "sessionToken": "Session Token",
+    "tokenSecurityMessage": "Please keep your token safe and do not share it with others. Token is equivalent to your login credentials.",    "sessionToken": "Session Token",
     "copyToken": "Copy Token",
     "tokenUnavailable": "Unable to get token",
-    "tokenUnavailableMessage": "Current session may not be fully established, please log in again"
+    "tokenUnavailableMessage": "Current session may not be fully established, please log in again",
+    "projectInfo": "Project Info",
+    "developer": "Developer",
+    "support": "Join Telegram Chat",
+    "sourceCode": "Source Code",
+    "communityChat": "Community Chat"
   },
   "dialog": {
     "channel": "Channel",

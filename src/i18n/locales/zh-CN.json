@@ -135,11 +135,15 @@
     "currentToken": "当前会话 Token",
     "tokenDescription": "您可以保存此Token用于下次快速登录",
     "securityTip": "安全提示",
-    "tokenSecurityMessage": "请妥善保管您的Token，不要分享给他人。Token相当于您的登录凭据。",
-    "sessionToken": "会话 Token",
+    "tokenSecurityMessage": "请妥善保管您的Token，不要分享给他人。Token相当于您的登录凭据。",    "sessionToken": "会话 Token",
     "copyToken": "复制 Token",
     "tokenUnavailable": "无法获取Token",
-    "tokenUnavailableMessage": "当前会话可能未完全建立，请重新登录"
+    "tokenUnavailableMessage": "当前会话可能未完全建立，请重新登录",
+    "projectInfo": "项目信息",
+    "developer": "开发者",
+    "support": "加入Telegram支持群组",
+    "sourceCode": "源代码",
+    "communityChat": "社区群组"
   },
   "dialog": {
     "channel": "频道",

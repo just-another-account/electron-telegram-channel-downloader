@@ -517,11 +517,58 @@
                         <v-icon start>mdi-arrow-left</v-icon>
                         返回
                       </v-btn>
-                    </v-form>
-                  </div>
+                    </v-form>                  </div>
                 </v-window-item>
               </v-window>
             </v-card-text>
+
+            <!-- 项目信息和链接 -->
+            <v-card-actions class="px-6 pb-6">
+              <v-container class="pa-0">
+                <v-divider class="mb-4"></v-divider>
+                <div class="project-links">
+                  <div class="links-title">
+                    <v-icon size="16" color="primary" class="mr-2">mdi-information-outline</v-icon>
+                    <span class="text-caption text-medium-emphasis">{{ $t('common.projectInfo') }}</span>
+                  </div>
+                  <div class="links-container">
+                    <v-btn
+                      variant="text"
+                      size="small"
+                      color="primary"
+                      :href="'https://github.com/just-another-account/electron-telegram-channel-downloader'"
+                      target="_blank"
+                      class="link-btn"
+                    >
+                      <v-icon start size="16">mdi-github</v-icon>
+                      GitHub
+                    </v-btn>
+                    <v-btn
+                      variant="text"
+                      size="small"
+                      color="primary"
+                      :href="'https://t.me/oooooh_hooooo'"
+                      target="_blank"
+                      class="link-btn"
+                    >
+                      <v-icon start size="16">mdi-send</v-icon>
+                      {{ $t('common.developer') }}
+                    </v-btn>
+                    <v-btn
+                      variant="text"
+                      size="small"
+                      color="primary"
+                      :href="'https://t.me/channel_downloader_chat'"
+                      target="_blank"
+                      class="link-btn"
+                    >
+                      <v-icon start size="16">mdi-chat</v-icon>
+                      {{ $t('common.support') }}
+                    </v-btn>
+                  </div>
+                </div>
+              </v-container>
+            </v-card-actions>
           </v-card>
         </v-col>
       </v-row>
@@ -1019,6 +1066,58 @@
 .v-theme--dark .token-login-btn:hover {
   background: rgb(var(--v-theme-primary)) !important;
   color: white !important;
+}
+
+/* 项目链接样式 */
+.project-links {
+  text-align: center;
+}
+
+.links-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  opacity: 0.8;
+}
+
+.links-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.link-btn {
+  text-transform: none !important;
+  font-size: 0.75rem !important;
+  height: 32px !important;
+  padding: 0 12px !important;
+  border-radius: 16px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.link-btn:hover {
+  background: rgba(var(--v-theme-primary-rgb), 0.1) !important;
+  transform: translateY(-1px);
+}
+
+.v-theme--dark .link-btn:hover {
+  background: rgba(var(--v-theme-primary-rgb), 0.2) !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 600px) {
+  .links-container {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .link-btn {
+    width: 100%;
+    max-width: 200px;
+  }
 }
 </style>
 
