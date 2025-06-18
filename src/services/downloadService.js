@@ -35,6 +35,7 @@ class DownloadService {
       // 获取消息
       onProgress({ status: '正在获取消息列表...' })
       const messages = await telegramService.getMessages(dialog.entity, 1000)
+      console.log(messages)
       
       // 过滤消息
       let filteredMessages = messages
@@ -365,18 +366,31 @@ class DownloadService {
     
     // 检查文件名是否包含关键词
     if (message.media) {
-      // 获取原始文件名
+      // 获取原始文件名，优先从attributes获取
       let originalFileName = ''
       
-      if (message.media.document && message.media.document.fileName) {
-        originalFileName = message.media.document.fileName
+      if (message.media.document) {
+        const doc = message.media.document
+        
+        // 优先从attributes数组中获取文件名
+        if (doc.attributes && doc.attributes.length > 0) {
+          const firstAttr = doc.attributes[0]
+          if (firstAttr.fileName && firstAttr.fileName.trim()) {
+            originalFileName = firstAttr.fileName.trim()
+          }
+        }
+        
+        // 如果attributes中没有，则尝试document的fileName
+        if (!originalFileName && doc.fileName && doc.fileName.trim()) {
+          originalFileName = doc.fileName.trim()
+        }
       } else if (message.media.photo) {
         originalFileName = 'photo'
       } else if (message.media.video) {
         originalFileName = 'video'
       }
       
-      if (originalFileName.toLowerCase().includes(filterKeyword)) {
+      if (originalFileName && originalFileName.toLowerCase().includes(filterKeyword)) {
         return true
       }
     }
