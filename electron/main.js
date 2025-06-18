@@ -48,7 +48,7 @@ function createWindow() {
       allowRunningInsecureContent: true,
       experimentalFeatures: false
     },
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    titleBarStyle: 'default',
     show: false,
     autoHideMenuBar: true, // 隐藏菜单栏
   })

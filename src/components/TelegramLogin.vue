@@ -42,7 +42,7 @@
                     <template v-slot:icon>
                       <v-icon>mdi-key-variant</v-icon>
                     </template>
-                    API 配置
+                    {{ $t('login.steps.apiConfig') }}
                   </v-stepper-item>
                   
                   <v-divider></v-divider>
@@ -55,7 +55,7 @@
                     <template v-slot:icon>
                       <v-icon>mdi-phone</v-icon>
                     </template>
-                    手机验证
+                    {{ $t('login.steps.phoneVerification') }}
                   </v-stepper-item>
                   
                   <v-divider></v-divider>
@@ -68,7 +68,7 @@
                     <template v-slot:icon>
                       <v-icon>mdi-shield-check</v-icon>
                     </template>
-                    验证码
+                    {{ $t('login.steps.verificationCode') }}
                   </v-stepper-item>
                   
                   <v-divider></v-divider>
@@ -81,7 +81,7 @@
                     <template v-slot:icon>
                       <v-icon>mdi-lock</v-icon>
                     </template>
-                    两步验证
+                    {{ $t('login.steps.twoStepVerification') }}
                   </v-stepper-item>
                 </v-stepper-header>
               </v-stepper>
@@ -99,9 +99,9 @@
                       <div class="d-flex align-center">
                         <v-icon class="me-3">mdi-information-outline</v-icon>
                         <div>
-                          <div class="font-weight-medium">获取 API 凭据</div>
+                          <div class="font-weight-medium">{{ $t('login.getApiCredentials') }}</div>
                           <div class="text-caption mt-1">
-                            访问 <a href="https://my.telegram.org" target="_blank" class="text-decoration-none">my.telegram.org</a> 创建应用并获取 API ID 和 Hash
+                            {{ $t('login.getApiCredentialsDescription') }} <a href="https://my.telegram.org" target="_blank" class="text-decoration-none">my.telegram.org</a>
                           </div>
                         </div>
                       </div>
@@ -119,8 +119,8 @@
                         <div class="d-flex align-center">
                           <v-icon class="me-3">mdi-check-circle-outline</v-icon>
                           <div>
-                            <div class="font-weight-medium">发现已保存的凭据</div>
-                            <div class="text-caption mt-1">您可以使用已保存的凭据或重新输入</div>
+                            <div class="font-weight-medium">{{ $t('login.savedCredentials') }}</div>
+                            <div class="text-caption mt-1">{{ $t('login.savedCredentialsDescription') }}</div>
                           </div>
                         </div>
                         <v-btn 
@@ -130,7 +130,7 @@
                           @click="useStoredCredentials"
                           rounded="lg"
                         >
-                          使用已保存
+                          {{ $t('login.useSaved') }}
                         </v-btn>
                       </div>
                     </v-alert>
@@ -156,7 +156,7 @@
                         type="number"
                         variant="solo"
                         bg-color="surface-variant"
-                        :rules="[v => !!v || 'API ID 是必填项']"
+                        :rules="[v => !!v || $t('login.errors.apiIdRequired')]"
                         class="mb-4 modern-input"
                         prepend-inner-icon="mdi-identifier"
                         hide-details="auto"
@@ -167,7 +167,7 @@
                         label="API Hash"
                         variant="solo"
                         bg-color="surface-variant"
-                        :rules="[v => !!v || 'API Hash 是必填项']"
+                        :rules="[v => !!v || $t('login.errors.apiHashRequired')]"
                         class="mb-6 modern-input"
                         prepend-inner-icon="mdi-key-variant"
                         hide-details="auto"
@@ -183,7 +183,7 @@
                         rounded="xl"
                       >
                         <v-icon start>mdi-arrow-right</v-icon>
-                        下一步
+                        {{ $t('login.next') }}
                       </v-btn>
                       
                       <!-- 清除凭据按钮 -->
@@ -197,7 +197,7 @@
                         rounded="lg"
                       >
                         <v-icon start>mdi-delete-outline</v-icon>
-                        清除已保存凭据
+                        {{ $t('login.clearSavedCredentials') }}
                       </v-btn>
                     </v-form>
                   </div>
@@ -215,8 +215,8 @@
                       <div class="d-flex align-center">
                         <v-icon class="me-3">mdi-phone-outline</v-icon>
                         <div>
-                          <div class="font-weight-medium">手机号验证</div>
-                          <div class="text-caption mt-1">选择国家/地区并输入手机号，我们将发送验证码</div>
+                          <div class="font-weight-medium">{{ $t('login.phoneVerification') }}</div>
+                          <div class="text-caption mt-1">{{ $t('login.phoneVerificationDescription') }}</div>
                         </div>
                       </div>
                     </v-alert>
@@ -229,10 +229,10 @@
                             :items="countryList"
                             item-title="name"
                             item-value="code"
-                            label="国家/地区"
+                            :label="$t('login.country')"
                             variant="solo"
                             bg-color="surface-variant"
-                            :rules="[v => !!v || '请选择国家/地区']"
+                            :rules="[v => !!v || $t('login.selectCountry')]"
                             class="modern-input"
                             hide-details="auto"
                           >
@@ -260,8 +260,8 @@
                         <v-col cols="7">
                           <v-text-field
                             v-model="phoneNumberLocal"
-                            label="手机号码"
-                            :placeholder="selectedCountryData?.placeholder || '请输入手机号'"
+                            :label="$t('login.phoneNumber')"
+                            :placeholder="selectedCountryData?.placeholder || $t('login.phoneNumberPlaceholder')"
                             variant="solo"
                             bg-color="surface-variant"
                             :rules="phoneLocalRules"
@@ -297,7 +297,7 @@
                       >
                         <div class="d-flex align-center">
                           <div>
-                            <div class="font-weight-medium">完整号码</div>
+                            <div class="font-weight-medium">{{ $t('login.fullNumber') }}</div>
                             <div class="text-h6 mt-1">{{ fullPhoneNumber }}</div>
                           </div>
                         </div>
@@ -314,7 +314,7 @@
                         rounded="xl"
                       >
                         <v-icon start>mdi-send</v-icon>
-                        {{ sendingCode ? '发送中...' : '发送验证码' }}
+                        {{ sendingCode ? $t('login.sending') : $t('login.sendCode') }}
                       </v-btn>
                       
                       <v-btn
@@ -324,7 +324,7 @@
                         rounded="lg"
                       >
                         <v-icon start>mdi-arrow-left</v-icon>
-                        返回
+                        {{ $t('login.back') }}
                       </v-btn>
                       
                       <!-- Token登录选项 -->
@@ -332,7 +332,7 @@
                       
                       <div class="text-center">
                         <p class="text-caption text-medium-emphasis mb-4">
-                          已有会话 Token？
+                          {{ $t('login.existingToken') }}
                         </p>
                         <v-btn
                           variant="outlined"
@@ -343,7 +343,7 @@
                           rounded="lg"
                         >
                           <v-icon start>mdi-key-outline</v-icon>
-                          使用 Token 登录
+                          {{ $t('login.useTokenLogin') }}
                         </v-btn>
                       </div>
                     </v-form>
@@ -362,8 +362,8 @@
                       <div class="d-flex align-center">
                         <v-icon class="me-3">mdi-message-text-outline</v-icon>
                         <div>
-                          <div class="font-weight-medium">验证码已发送</div>
-                          <div class="text-caption mt-1">验证码已发送到 {{ fullPhoneNumber || phoneNumber }}</div>
+                          <div class="font-weight-medium">{{ $t('login.verificationCodeSent') }}</div>
+                          <div class="text-caption mt-1">{{ $t('login.verificationCodeSentDescription') }} {{ fullPhoneNumber || phoneNumber }}</div>
                         </div>
                       </div>
                     </v-alert>
@@ -385,11 +385,11 @@
                     <v-form ref="codeForm" v-model="codeFormValid" class="form-container">
                       <v-text-field
                         v-model="verificationCode"
-                        label="验证码"
-                        placeholder="输入6位验证码"
+                        :label="$t('login.verificationCode')"
+                        :placeholder="$t('login.enterVerificationCode')"
                         variant="solo"
                         bg-color="surface-variant"
-                        :rules="codeRules"
+                        :rules="codeRules.value"
                         class="mb-6 modern-input verification-input"
                         prepend-inner-icon="mdi-shield-key-outline"
                         hide-details="auto"
@@ -421,7 +421,7 @@
                           rounded="lg"
                         >
                           <v-icon start>mdi-refresh</v-icon>
-                          重新发送验证码
+                          {{ $t('login.resendCode') }}
                         </v-btn>
                         <v-chip
                           v-else
@@ -430,7 +430,7 @@
                           class="resend-countdown"
                         >
                           <v-icon start>mdi-timer-outline</v-icon>
-                          {{ resendCountdown }}秒后可重新发送
+                          {{ resendCountdown }} {{ $t('login.secondsUntilResend') }}
                         </v-chip>
                       </div>
                       
@@ -441,7 +441,7 @@
                         rounded="lg"
                       >
                         <v-icon start>mdi-arrow-left</v-icon>
-                        返回
+                        {{ $t('login.back') }}
                       </v-btn>
                     </v-form>
                   </div>
@@ -459,8 +459,8 @@
                       <div class="d-flex align-center">
                         <v-icon class="me-3">mdi-lock-outline</v-icon>
                         <div>
-                          <div class="font-weight-medium">需要两步验证密码</div>
-                          <div class="text-caption mt-1">您的账户已启用两步验证，请输入您的密码</div>
+                          <div class="font-weight-medium">{{ $t('login.twoStepRequired') }}</div>
+                          <div class="text-caption mt-1">{{ $t('login.twoStepRequiredDescription') }}</div>
                         </div>
                       </div>
                     </v-alert>
@@ -482,12 +482,12 @@
                     <v-form ref="passwordForm" v-model="passwordFormValid" class="form-container">
                       <v-text-field
                         v-model="password"
-                        label="两步验证密码"
+                        :label="$t('login.password')"
                         type="password"
-                        placeholder="输入您的两步验证密码"
+                        :placeholder="$t('login.enterTwoStepPassword')"
                         variant="solo"
                         bg-color="surface-variant"
-                        :rules="[v => !!v || '密码是必填项']"
+                        :rules="[v => !!v || $t('login.errors.passwordRequired')]"
                         class="mb-6 modern-input"
                         prepend-inner-icon="mdi-lock"
                         hide-details="auto"
@@ -505,7 +505,7 @@
                         rounded="xl"
                       >
                         <v-icon start>mdi-check-circle</v-icon>
-                        {{ verifying ? '验证中...' : '完成登录' }}
+                        {{ verifying ? $t('common.loading') : $t('login.verify') }}
                       </v-btn>
                       
                       <v-btn
@@ -515,7 +515,7 @@
                         rounded="lg"
                       >
                         <v-icon start>mdi-arrow-left</v-icon>
-                        返回
+                        {{ $t('login.back') }}
                       </v-btn>
                     </v-form>                  </div>
                 </v-window-item>
@@ -588,9 +588,9 @@
               <v-icon color="white">mdi-key-variant</v-icon>
             </v-avatar>
             <div>
-              <h3 class="text-h6 mb-1">Token 登录</h3>
+              <h3 class="text-h6 mb-1">{{ $t('login.tokenLogin') }}</h3>
               <p class="text-caption text-medium-emphasis mb-0">
-                使用已保存的会话 Token 快速登录
+                {{ $t('login.tokenLoginDescription') }}
               </p>
             </div>
           </div>
@@ -606,9 +606,9 @@
             <div class="d-flex align-center">
               <v-icon class="me-3">mdi-information-outline</v-icon>
               <div>
-                <div class="font-weight-medium">什么是 Token？</div>
+                <div class="font-weight-medium">{{ $t('login.whatIsToken') }}</div>
                 <div class="text-caption mt-1">
-                  Token 是您之前登录时生成的会话字符串，可用于快速重新登录而无需重新验证手机号
+                  {{ $t('login.tokenExplanation') }}
                 </div>
               </div>
             </div>
@@ -617,8 +617,8 @@
           <v-form ref="tokenForm" v-model="tokenFormValid">
             <v-textarea
               v-model="sessionToken"
-              label="会话 Token"
-              placeholder="请粘贴您的会话 Token..."
+              :label="$t('login.sessionToken')"
+              :placeholder="$t('login.pasteToken')"
               variant="solo"
               bg-color="surface-variant"
               :rules="tokenRules"
@@ -648,7 +648,7 @@
             @click="closeTokenDialog"
             rounded="lg"
           >
-            取消
+            {{ $t('common.cancel') }}
           </v-btn>
           
           <v-spacer></v-spacer>
@@ -662,7 +662,7 @@
             size="large"
           >
             <v-icon start>mdi-login</v-icon>
-            {{ tokenLogging ? '登录中...' : '登录' }}
+            {{ tokenLogging ? $t('common.loading') : $t('login.connect') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -680,19 +680,19 @@
   position: relative;
   overflow: hidden;
   min-height: 100vh;
-  width: 100vw;
+  width: 100%;
   display: flex;
   align-items: center;
   box-sizing: border-box;
 }
 
 .login-container {
-  height: 100vh !important;
+  min-height: 100vh;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   padding: 40px 24px !important;
-  max-width: 100vw !important;
+  max-width: 100% !important;
   overflow-x: hidden !important;
   width: 100% !important;
 }
@@ -1234,10 +1234,10 @@ const phoneLocalRules = [
   }
 ]
 
-const codeRules = [
-  v => !!v || '验证码是必填项',
-  v => /^\d{4,6}$/.test(v) || '验证码应为4-6位数字'
-]
+const codeRules = computed(() => [
+  v => !!v || t('login.errors.codeRequired'),
+  v => /^\d{4,6}$/.test(v) || t('login.errors.codeInvalid')
+])
 
 const tokenRules = [
   v => !!v || 'Token是必填项',
@@ -1296,7 +1296,7 @@ async function sendCode() {
     startResendCountdown()
   } catch (error) {
     console.error('❌ 发送验证码失败:', error)
-    errorMessage.value = '发送验证码失败: ' + (error.message || error)
+    errorMessage.value = t('login.errors.sendCodeFailed') + (error.message || error)
   } finally {
     sendingCode.value = false
   }
@@ -1320,9 +1320,9 @@ async function verifyCode() {
   } catch (error) {
     console.error('验证码验证失败:', error)
     if (error.message.includes('PHONE_CODE_INVALID')) {
-      errorMessage.value = '验证码无效，请检查后重试'
+      errorMessage.value = t('login.errors.codeInvalidRetry')
     } else if (error.message.includes('PHONE_CODE_EXPIRED')) {
-      errorMessage.value = '验证码已过期，请重新发送'
+      errorMessage.value = t('login.errors.codeExpired')
     } else if (error.message.includes('SESSION_PASSWORD_NEEDED')) {
       currentStepNumber.value = 4
       return
@@ -1367,7 +1367,7 @@ async function resendCode() {
     await telegramStore.sendCode(phoneNumber.value || fullPhoneNumber.value)
     startResendCountdown()
   } catch (error) {
-    errorMessage.value = '重新发送验证码失败: ' + error.message
+    errorMessage.value = t('login.errors.resendCodeFailed') + error.message
   } finally {
     sendingCode.value = false
   }

@@ -7,10 +7,11 @@
         :icon="false"
         class="language-selector"
         :ripple="false"
+        color="white"
       >
-        <v-icon start>mdi-translate</v-icon>
+        <v-icon start color="white">mdi-translate</v-icon>
         {{ currentLanguageDisplay }}
-        <v-icon end>mdi-chevron-down</v-icon>
+        <v-icon end color="white">mdi-chevron-down</v-icon>
       </v-btn>
     </template>
 
@@ -63,6 +64,11 @@ const changeLanguage = (langCode) => {
   text-transform: none !important;
   letter-spacing: normal !important;
   min-width: 120px;
+  color: white !important;
+}
+
+.language-selector .v-btn__content {
+  color: white !important;
 }
 
 .language-list {

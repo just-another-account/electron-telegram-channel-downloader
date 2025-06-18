@@ -80,7 +80,7 @@ async function copyToken() {
   <v-app>
     <!-- 现代渐变应用栏 -->
     <v-app-bar 
-      v-if="showDownloader" 
+      v-if="showDownloader"
       class="gradient-app-bar"
       dark
       elevation="0"
@@ -106,60 +106,48 @@ async function copyToken() {
           <!-- 语言选择器 -->
           <LanguageSelector class="me-2" />
           
-          <!-- 项目链接菜单 -->
-          <v-menu offset-y>
-            <template v-slot:activator="{ props }">
-              <v-btn 
-                icon 
-                variant="text" 
-                v-bind="props"
-                class="me-2"
-                size="large"
-              >
-                <v-icon>mdi-information-outline</v-icon>
-                <v-tooltip activator="parent" location="bottom">
-                  {{ $t('common.projectInfo') }}
-                </v-tooltip>
-              </v-btn>
-            </template>
-            <v-list density="compact" class="project-info-menu">
-              <v-list-item
-                :href="'https://github.com/just-another-account/electron-telegram-channel-downloader'"
-                target="_blank"
-                class="menu-link-item"
-              >
-                <template v-slot:prepend>
-                  <v-icon size="18" color="primary">mdi-github</v-icon>
-                </template>
-                <v-list-item-title>GitHub</v-list-item-title>
-                <v-list-item-subtitle>{{ $t('common.sourceCode') }}</v-list-item-subtitle>
-              </v-list-item>
-              
-              <v-list-item
-                :href="'https://t.me/oooooh_hooooo'"
-                target="_blank"
-                class="menu-link-item"
-              >
-                <template v-slot:prepend>
-                  <v-icon size="18" color="primary">mdi-telegram</v-icon>
-                </template>
-                <v-list-item-title>{{ $t('common.developer') }}</v-list-item-title>
-                <v-list-item-subtitle>@oooooh_hooooo</v-list-item-subtitle>
-              </v-list-item>
-              
-              <v-list-item
-                :href="'https://t.me/channel_downloader_chat'"
-                target="_blank"
-                class="menu-link-item"
-              >
-                <template v-slot:prepend>
-                  <v-icon size="18" color="primary">mdi-chat</v-icon>
-                </template>
-                <v-list-item-title>{{ $t('common.support') }}</v-list-item-title>
-                <v-list-item-subtitle>{{ $t('common.communityChat') }}</v-list-item-subtitle>
-              </v-list-item>
-            </v-list>
-          </v-menu>
+          <!-- 项目链接按钮 -->
+          <v-btn 
+            icon 
+            variant="text" 
+            :href="'https://github.com/just-another-account/electron-telegram-channel-downloader'"
+            target="_blank"
+            class="me-1"
+            size="large"
+          >
+            <v-icon color="white">mdi-github</v-icon>
+            <v-tooltip activator="parent" location="bottom">
+              {{ $t('common.sourceCode') }}
+            </v-tooltip>
+          </v-btn>
+          
+          <v-btn 
+            icon 
+            variant="text" 
+            :href="'https://t.me/oooooh_hooooo'"
+            target="_blank"
+            class="me-1"
+            size="large"
+          >
+            <v-icon color="white">mdi-send</v-icon>
+            <v-tooltip activator="parent" location="bottom">
+              {{ $t('common.developer') }}
+            </v-tooltip>
+          </v-btn>
+          
+          <v-btn 
+            icon 
+            variant="text" 
+            :href="'https://t.me/channel_downloader_chat'"
+            target="_blank"
+            class="me-2"
+            size="large"
+          >
+            <v-icon color="white">mdi-chat</v-icon>
+            <v-tooltip activator="parent" location="bottom">
+              {{ $t('common.support') }}
+            </v-tooltip>
+          </v-btn>
           
           <v-btn 
             icon 
@@ -168,7 +156,7 @@ async function copyToken() {
             class="me-2"
             size="large"
           >
-            <v-icon>mdi-key-variant</v-icon>
+            <v-icon color="white">mdi-key-variant</v-icon>
             <v-tooltip activator="parent" location="bottom">
               {{ $t('common.viewToken') }}
             </v-tooltip>
@@ -180,7 +168,7 @@ async function copyToken() {
             @click="handleLogout"
             size="large"
           >
-            <v-icon>mdi-logout-variant</v-icon>
+            <v-icon color="white">mdi-logout-variant</v-icon>
             <v-tooltip activator="parent" location="bottom">
               {{ $t('common.logout') }}
             </v-tooltip>
@@ -386,33 +374,12 @@ async function copyToken() {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* 项目信息菜单样式 */
-.project-info-menu {
-  background: rgba(255, 255, 255, 0.98) !important;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
-  min-width: 240px !important;
+/* 项目链接按钮样式优化 */
+.v-btn[href] {
+  text-decoration: none !important;
 }
 
-.menu-link-item {
-  border-radius: 8px !important;
-  margin: 4px 8px !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-.menu-link-item:hover {
-  background: rgba(var(--v-theme-primary-rgb), 0.1) !important;
-  transform: translateY(-1px);
-}
-
-.v-theme--dark .project-info-menu {
-  background: rgba(30, 41, 59, 0.98) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.v-theme--dark .menu-link-item:hover {
-  background: rgba(var(--v-theme-primary-rgb), 0.2) !important;
+.v-btn[href]:hover {
+  opacity: 0.8;
 }
 </style>
