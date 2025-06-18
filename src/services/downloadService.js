@@ -15,7 +15,7 @@ class DownloadService {
    * 下载频道内容
    */
   async downloadChannelContent(config) {
-    const { dialog, downloadTypes, startMessageId, endMessageId, downloadPath, onProgress } = config
+    const { dialog, downloadTypes, startMessageId, endMessageId, downloadPath, filenameFilter, onProgress } = config
     
     this.isDownloading = true
     this.currentDownloadConfig = config
@@ -70,15 +70,26 @@ class DownloadService {
         })
         
         try {
-          // 提取消息数据
-          const messageInfo = this.extractMessageData(message)
-          allMessageData.push(messageInfo)
+          // 检查消息是否符合过滤条件
+          const shouldInclude = this.shouldDownloadFile(message, filenameFilter)
+          
+          if (shouldInclude) {
+            // 提取消息数据
+            const messageInfo = this.extractMessageData(message)
+            allMessageData.push(messageInfo)
+          }
           
           // 下载媒体文件
           if (message.media && this.shouldDownloadMedia(message.media, downloadTypes)) {
-            await this.downloadMediaFile(message, channelDir, downloadTypes, onProgress)
-            this.downloadedCount++
-            onProgress({ downloaded: this.downloadedCount })
+            // 检查文件名过滤
+            if (shouldInclude) {
+              await this.downloadMediaFile(message, channelDir, downloadTypes, onProgress)
+              this.downloadedCount++
+              onProgress({ downloaded: this.downloadedCount })
+            } else {
+              this.skippedCount++
+              onProgress({ skipped: this.skippedCount })
+            }
           } else if (message.media) {
             this.skippedCount++
             onProgress({ skipped: this.skippedCount })
@@ -303,6 +314,44 @@ class DownloadService {
     if (media.video || media._ === 'messageMediaDocument' && media.document?.videoSizes) return 'video'
     if (media.document || media._ === 'messageMediaDocument') return 'document'
     return 'other'
+  }
+
+  /**
+   * 检查是否应该下载该文件（基于文件名过滤）
+   */
+  shouldDownloadFile(message, filenameFilter) {
+    // 如果没有设置过滤条件，下载所有文件
+    if (!filenameFilter || filenameFilter.trim() === '') {
+      return true
+    }
+
+    const filterKeyword = filenameFilter.toLowerCase().trim()
+    
+    // 检查消息文本是否包含关键词
+    if (message.message && message.message.toLowerCase().includes(filterKeyword)) {
+      return true
+    }
+    
+    // 检查文件名是否包含关键词
+    if (message.media) {
+      // 获取原始文件名
+      let originalFileName = ''
+      
+      if (message.media.document && message.media.document.fileName) {
+        originalFileName = message.media.document.fileName
+      } else if (message.media.photo) {
+        originalFileName = 'photo'
+      } else if (message.media.video) {
+        originalFileName = 'video'
+      }
+      
+      if (originalFileName.toLowerCase().includes(filterKeyword)) {
+        return true
+      }
+    }
+    
+    // 如果文件名和消息文本都不包含关键词，则不下载
+    return false
   }
 
   /**

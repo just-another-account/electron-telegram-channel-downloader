@@ -395,6 +395,46 @@
                     </v-row>
                   </div>
                   
+                  <!-- 文件名过滤 -->
+                  <div class="form-section mb-8">
+                    <h4 class="section-title mb-4">
+                      <v-icon class="me-2" color="primary">mdi-filter-outline</v-icon>
+                      {{ $t('download.filenameFilter') }}
+                    </h4>
+                    <v-text-field
+                      v-model="filenameFilter"
+                      :label="$t('download.filenameFilterLabel')"
+                      variant="solo"
+                      bg-color="surface-variant"
+                      :placeholder="$t('download.filenameFilterPlaceholder')"
+                      class="modern-input"
+                      rounded="xl"
+                      hide-details="auto"
+                      clearable
+                    >
+                      <template v-slot:prepend-inner>
+                        <v-icon color="primary">mdi-magnify</v-icon>
+                      </template>
+                    </v-text-field>
+                    <div class="mt-3">
+                      <v-alert
+                        type="info"
+                        variant="tonal"
+                        density="compact"
+                        rounded="lg"
+                        class="filter-help"
+                      >
+                        <div class="text-body-2">
+                          <v-icon size="16" class="me-2">mdi-information-outline</v-icon>
+                          {{ $t('download.filenameFilterHelp') }}
+                        </div>
+                        <div class="mt-2 text-caption opacity-75">
+                          {{ $t('download.filenameFilterExample') }}
+                        </div>
+                      </v-alert>
+                    </div>
+                  </div>
+                  
                   <!-- 下载路径 -->
                   <div class="form-section mb-8">
                     <h4 class="section-title mb-4">
@@ -633,6 +673,7 @@ const downloadTypes = ref(['images', 'videos'])
 const startMessageId = ref('')
 const endMessageId = ref('')
 const downloadPath = ref('')
+const filenameFilter = ref('')
 
 // 下载进度
 const downloadProgress = ref({
@@ -837,6 +878,7 @@ async function startDownload() {
       startMessageId: startMessageId.value ? parseInt(startMessageId.value) : null,
       endMessageId: endMessageId.value ? parseInt(endMessageId.value) : null,
       downloadPath: downloadPath.value,
+      filenameFilter: filenameFilter.value?.trim() || null,
       onProgress: (progress) => {
         downloadProgress.value = { ...downloadProgress.value, ...progress }
       }
