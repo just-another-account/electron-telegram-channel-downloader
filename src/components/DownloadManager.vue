@@ -416,6 +416,42 @@
                         <v-icon color="primary">mdi-magnify</v-icon>
                       </template>
                     </v-text-field>
+                    
+                    <!-- 过滤模式选择 -->
+                    <div v-if="filenameFilter && filenameFilter.trim()" class="mt-4">
+                      <v-radio-group 
+                        v-model="filterMode" 
+                        inline 
+                        hide-details
+                        class="filter-mode-group"
+                      >
+                        <v-radio 
+                          :label="$t('download.filterModeInclude')" 
+                          value="include"
+                          color="success"
+                        >
+                          <template v-slot:label>
+                            <div class="d-flex align-center">
+                              <v-icon size="16" class="me-2" color="success">mdi-check-circle-outline</v-icon>
+                              {{ $t('download.filterModeInclude') }}
+                            </div>
+                          </template>
+                        </v-radio>
+                        <v-radio 
+                          :label="$t('download.filterModeExclude')" 
+                          value="exclude"
+                          color="error"
+                        >
+                          <template v-slot:label>
+                            <div class="d-flex align-center">
+                              <v-icon size="16" class="me-2" color="error">mdi-close-circle-outline</v-icon>
+                              {{ $t('download.filterModeExclude') }}
+                            </div>
+                          </template>
+                        </v-radio>
+                      </v-radio-group>
+                    </div>
+                    
                     <div class="mt-3">
                       <v-alert
                         type="info"
@@ -426,10 +462,24 @@
                       >
                         <div class="text-body-2">
                           <v-icon size="16" class="me-2">mdi-information-outline</v-icon>
-                          {{ $t('download.filenameFilterHelp') }}
+                          {{ 
+                            filenameFilter && filenameFilter.trim() 
+                              ? (filterMode === 'exclude' 
+                                  ? $t('download.filenameFilterHelpExclude') 
+                                  : $t('download.filenameFilterHelpInclude')
+                                )
+                              : $t('download.filenameFilterHelp')
+                          }}
                         </div>
                         <div class="mt-2 text-caption opacity-75">
-                          {{ $t('download.filenameFilterExample') }}
+                          {{ 
+                            filenameFilter && filenameFilter.trim() 
+                              ? (filterMode === 'exclude' 
+                                  ? $t('download.filenameFilterExampleExclude') 
+                                  : $t('download.filenameFilterExampleInclude')
+                                )
+                              : $t('download.filenameFilterExample')
+                          }}
                         </div>
                       </v-alert>
                     </div>
@@ -674,6 +724,7 @@ const startMessageId = ref('')
 const endMessageId = ref('')
 const downloadPath = ref('')
 const filenameFilter = ref('')
+const filterMode = ref('include') // 'include' 或 'exclude'
 
 // 下载进度
 const downloadProgress = ref({
@@ -879,6 +930,7 @@ async function startDownload() {
       endMessageId: endMessageId.value ? parseInt(endMessageId.value) : null,
       downloadPath: downloadPath.value,
       filenameFilter: filenameFilter.value?.trim() || null,
+      filterMode: filterMode.value,
       onProgress: (progress) => {
         downloadProgress.value = { ...downloadProgress.value, ...progress }
       }
@@ -1637,5 +1689,23 @@ onMounted(async () => {
   border-radius: 8px !important;
   font-size: 0.75rem !important;
   padding: 8px 12px !important;
+}
+
+/* 过滤模式样式 */
+.filter-mode-group {
+  margin-top: 8px;
+}
+
+.filter-mode-group .v-radio {
+  margin-right: 24px;
+}
+
+.filter-mode-group .v-selection-control__wrapper {
+  height: auto;
+}
+
+.filter-mode-group .v-label {
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 </style>

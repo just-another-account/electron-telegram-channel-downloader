@@ -15,7 +15,7 @@ class DownloadService {
    * 下载频道内容
    */
   async downloadChannelContent(config) {
-    const { dialog, downloadTypes, startMessageId, endMessageId, downloadPath, filenameFilter, onProgress } = config
+    const { dialog, downloadTypes, startMessageId, endMessageId, downloadPath, filenameFilter, filterMode, onProgress } = config
     
     this.isDownloading = true
     this.currentDownloadConfig = config
@@ -72,7 +72,7 @@ class DownloadService {
         
         try {
           // 检查消息是否符合过滤条件
-          const shouldInclude = this.shouldDownloadFile(message, filenameFilter)
+          const shouldInclude = this.shouldDownloadFile(message, filenameFilter, filterMode)
           
           let messageInfo = null
           if (shouldInclude) {
@@ -351,21 +351,22 @@ class DownloadService {
   /**
    * 检查是否应该下载该文件（基于文件名过滤）
    */
-  shouldDownloadFile(message, filenameFilter) {
+  shouldDownloadFile(message, filenameFilter, filterMode = 'include') {
     // 如果没有设置过滤条件，下载所有文件
     if (!filenameFilter || filenameFilter.trim() === '') {
       return true
     }
 
     const filterKeyword = filenameFilter.toLowerCase().trim()
+    let matchFound = false
     
     // 检查消息文本是否包含关键词
     if (message.message && message.message.toLowerCase().includes(filterKeyword)) {
-      return true
+      matchFound = true
     }
     
     // 检查文件名是否包含关键词
-    if (message.media) {
+    if (!matchFound && message.media) {
       // 获取原始文件名，优先从attributes获取
       let originalFileName = ''
       
@@ -391,12 +392,18 @@ class DownloadService {
       }
       
       if (originalFileName && originalFileName.toLowerCase().includes(filterKeyword)) {
-        return true
+        matchFound = true
       }
     }
     
-    // 如果文件名和消息文本都不包含关键词，则不下载
-    return false
+    // 根据过滤模式返回结果
+    if (filterMode === 'exclude') {
+      // 排除模式：如果匹配到关键词，则不下载
+      return !matchFound
+    } else {
+      // 包含模式：如果匹配到关键词，则下载
+      return matchFound
+    }
   }
 
   /**
