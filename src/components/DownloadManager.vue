@@ -432,7 +432,6 @@
                         >
                           <template v-slot:label>
                             <div class="d-flex align-center">
-                              <v-icon size="16" class="me-2" color="success">mdi-check-circle-outline</v-icon>
                               {{ $t('download.filterModeInclude') }}
                             </div>
                           </template>
@@ -444,7 +443,6 @@
                         >
                           <template v-slot:label>
                             <div class="d-flex align-center">
-                              <v-icon size="16" class="me-2" color="error">mdi-close-circle-outline</v-icon>
                               {{ $t('download.filterModeExclude') }}
                             </div>
                           </template>
@@ -461,7 +459,7 @@
                         class="filter-help"
                       >
                         <div class="text-body-2">
-                          <v-icon size="16" class="me-2">mdi-information-outline</v-icon>
+                          
                           {{ 
                             filenameFilter && filenameFilter.trim() 
                               ? (filterMode === 'exclude' 
