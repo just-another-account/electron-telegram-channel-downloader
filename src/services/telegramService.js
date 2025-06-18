@@ -2,8 +2,6 @@
 const { TelegramClient } = window.telegram || {}
 const { StringSession } = window.telegram?.sessions || {}
 
-console.log(111, StringSession)
-
 import { TELEGRAM_CONFIG, validateConfig, loadApiCredentials } from '../config/telegram.js'
 
 class TelegramService {

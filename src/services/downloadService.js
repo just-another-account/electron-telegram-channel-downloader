@@ -73,9 +73,10 @@ class DownloadService {
           // 检查消息是否符合过滤条件
           const shouldInclude = this.shouldDownloadFile(message, filenameFilter)
           
+          let messageInfo = null
           if (shouldInclude) {
             // 提取消息数据
-            const messageInfo = this.extractMessageData(message)
+            messageInfo = this.extractMessageData(message)
             allMessageData.push(messageInfo)
           }
           
@@ -83,7 +84,15 @@ class DownloadService {
           if (message.media && this.shouldDownloadMedia(message.media, downloadTypes)) {
             // 检查文件名过滤
             if (shouldInclude) {
-              await this.downloadMediaFile(message, channelDir, downloadTypes, onProgress)
+              const downloadResult = await this.downloadMediaFile(message, channelDir, downloadTypes, onProgress)
+              
+              // 如果下载成功，更新消息数据中的媒体路径信息
+              if (downloadResult && downloadResult.filePath && messageInfo) {
+                messageInfo.media.downloadPath = downloadResult.filePath
+                messageInfo.media.downloadedAt = new Date().toISOString()
+                messageInfo.media.fileExists = true
+              }
+              
               this.downloadedCount++
               onProgress({ downloaded: this.downloadedCount })
             } else {
@@ -275,21 +284,105 @@ class DownloadService {
     const fromId = message.fromId?.value || message.fromId
     const peerId = message.peerId?.value || message.peerId
     
+    // 提取详细的媒体信息
+    let mediaInfo = null
+    if (message.media) {
+      mediaInfo = this.extractDetailedMediaInfo(message.media, messageId)
+    }
+    
     return {
       id: messageId,
       date: message.date ? new Date(message.date * 1000).toISOString() : null,
       text: message.message || message.text || '',
       fromId: typeof fromId === 'bigint' ? Number(fromId) : fromId,
       peerId: typeof peerId === 'bigint' ? Number(peerId) : peerId,
-      media: message.media ? {
-        type: this.getMediaType(message.media),
-        fileName: this.getMediaFileName(message.media, messageId),
-        size: this.getMediaSize(message.media)
-      } : null,
+      media: mediaInfo,
       replies: message.replies?.replies || 0,
       views: message.views || 0,
-      forwards: message.forwards || 0
+      forwards: message.forwards || 0,
+      // 添加原始消息的一些额外信息
+      editDate: message.editDate ? new Date(message.editDate * 1000).toISOString() : null,
+      groupedId: message.groupedId ? (typeof message.groupedId === 'bigint' ? Number(message.groupedId) : message.groupedId) : null,
+      replyToMsgId: message.replyTo?.replyToMsgId || null
     }
+  }
+
+  /**
+   * 提取详细的媒体信息
+   */
+  extractDetailedMediaInfo(media, messageId) {
+    const mediaType = this.getMediaType(media)
+    const fileName = this.getMediaFileName(media, messageId)
+    const fileSize = this.getMediaSize(media)
+    
+    const baseInfo = {
+      type: mediaType,
+      fileName: fileName,
+      size: fileSize,
+      downloadPath: null  // 实际下载后会更新这个路径
+    }
+    
+    // 根据媒体类型添加特定信息
+    if (media.photo || media._ === 'messageMediaPhoto') {
+      const photo = media.photo || media
+      return {
+        ...baseInfo,
+        photoId: photo.id ? (typeof photo.id === 'bigint' ? Number(photo.id) : photo.id) : null,
+        accessHash: photo.accessHash ? (typeof photo.accessHash === 'bigint' ? Number(photo.accessHash) : photo.accessHash) : null,
+        fileReference: photo.fileReference ? Array.from(photo.fileReference) : null,
+        date: photo.date ? new Date(photo.date * 1000).toISOString() : null,
+        sizes: photo.sizes ? photo.sizes.map(size => ({
+          type: size._,
+          width: size.w || size.width,
+          height: size.h || size.height,
+          size: size.size
+        })) : null,
+        dcId: photo.dcId || null
+      }
+    }
+    
+    if (media.document) {
+      const doc = media.document
+      return {
+        ...baseInfo,
+        documentId: doc.id ? (typeof doc.id === 'bigint' ? Number(doc.id) : doc.id) : null,
+        accessHash: doc.accessHash ? (typeof doc.accessHash === 'bigint' ? Number(doc.accessHash) : doc.accessHash) : null,
+        fileReference: doc.fileReference ? Array.from(doc.fileReference) : null,
+        originalFileName: doc.fileName || null,
+        mimeType: doc.mimeType || null,
+        date: doc.date ? new Date(doc.date * 1000).toISOString() : null,
+        dcId: doc.dcId || null,
+        // 文档属性
+        attributes: doc.attributes ? doc.attributes.map(attr => ({
+          type: attr._,
+          fileName: attr.fileName,
+          width: attr.w,
+          height: attr.h,
+          duration: attr.duration,
+          title: attr.title,
+          performer: attr.performer
+        })) : null,
+        // 缩略图信息
+        thumbs: doc.thumbs ? doc.thumbs.map(thumb => ({
+          type: thumb._,
+          width: thumb.w,
+          height: thumb.h,
+          size: thumb.size
+        })) : null
+      }
+    }
+    
+    if (media.video) {
+      return {
+        ...baseInfo,
+        duration: media.video.duration || null,
+        width: media.video.w || media.video.width || null,
+        height: media.video.h || media.video.height || null
+      }
+    }
+    
+    // 其他媒体类型
+    return baseInfo
   }
 
   /**
@@ -361,18 +454,31 @@ class DownloadService {
     const timestamp = Date.now()
     
     if (media.photo || media._ === 'messageMediaPhoto') {
+      // 图片没有原始文件名，使用自定义命名
       return `photo_${messageId}_${timestamp}.jpg`
     }
     
     if (media.document) {
       const doc = media.document
-      if (doc.fileName) {
-        const ext = doc.fileName.split('.').pop()
-        return `${doc.fileName.replace(/\.[^/.]+$/, "")}_${messageId}_${timestamp}.${ext}`
+      if (doc.fileName && doc.fileName.trim()) {
+        // 优先使用原始文件名，但确保文件名安全
+        const originalName = this.sanitizeFileName(doc.fileName)
+        
+        // 检查是否需要添加扩展名
+        const hasExtension = originalName.includes('.')
+        if (hasExtension) {
+          // 如果原始文件名已有扩展名，直接使用
+          return originalName
+        } else {
+          // 如果没有扩展名，根据MIME类型添加
+          const ext = this.getExtensionFromMimeType(doc.mimeType) || 'bin'
+          return `${originalName}.${ext}`
+        }
       }
       
+      // 如果没有原始文件名，使用自定义命名
       if (doc.mimeType) {
-        const ext = doc.mimeType.split('/').pop()
+        const ext = this.getExtensionFromMimeType(doc.mimeType) || 'bin'
         return `document_${messageId}_${timestamp}.${ext}`
       }
       
@@ -380,10 +486,74 @@ class DownloadService {
     }
     
     if (media.video) {
+      // 视频通常没有原始文件名，使用自定义命名
       return `video_${messageId}_${timestamp}.mp4`
     }
     
     return `file_${messageId}_${timestamp}`
+  }
+
+  /**
+   * 清理文件名，移除不安全字符
+   */
+  sanitizeFileName(fileName) {
+    // 移除或替换不安全的字符
+    return fileName
+      .replace(/[<>:"/\\|?*]/g, '_')  // 替换Windows不支持的字符
+      .replace(/\.\./g, '_')          // 替换双点
+      .replace(/^\./, '_')            // 替换开头的点
+      .trim()
+  }
+
+  /**
+   * 根据MIME类型获取文件扩展名
+   */
+  getExtensionFromMimeType(mimeType) {
+    if (!mimeType) return null
+    
+    const mimeToExt = {
+      // 图片
+      'image/jpeg': 'jpg',
+      'image/png': 'png', 
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'image/bmp': 'bmp',
+      'image/svg+xml': 'svg',
+      
+      // 视频
+      'video/mp4': 'mp4',
+      'video/avi': 'avi',
+      'video/mkv': 'mkv',
+      'video/mov': 'mov',
+      'video/wmv': 'wmv',
+      'video/webm': 'webm',
+      
+      // 音频
+      'audio/mp3': 'mp3',
+      'audio/wav': 'wav',
+      'audio/flac': 'flac',
+      'audio/aac': 'aac',
+      'audio/ogg': 'ogg',
+      
+      // 文档
+      'application/pdf': 'pdf',
+      'application/zip': 'zip',
+      'application/rar': 'rar',
+      'application/7z': '7z',
+      'text/plain': 'txt',
+      'application/json': 'json',
+      'application/xml': 'xml',
+      
+      // Office文档
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+      'application/msword': 'doc',
+      'application/vnd.ms-excel': 'xls',
+      'application/vnd.ms-powerpoint': 'ppt'
+    }
+    
+    return mimeToExt[mimeType] || mimeType.split('/').pop()
   }
 
   /**
@@ -406,11 +576,11 @@ class DownloadService {
       // 检查是否被取消
       if (!this.isDownloading) {
         console.log('🛑 下载已取消，跳过文件下载')
-        return
+        return null
       }
 
       const media = message.media
-      if (!media) return
+      if (!media) return null
 
       const mediaType = this.getMediaType(media)
       const fileName = this.getMediaFileName(media, message.id)
@@ -422,12 +592,18 @@ class DownloadService {
       else if (mediaType === 'document') subDir = 'documents'
       
       const filePath = `${channelDir}/${subDir}/${fileName}`
+      const relativePath = `${subDir}/${fileName}` // 相对路径，用于JSON记录
       
       // 检查文件是否已存在
       const exists = await fs.exists(filePath)
       if (exists) {
         console.log('📄 文件已存在，跳过:', fileName)
-        return
+        return {
+          success: true,
+          filePath: relativePath,
+          fileName: fileName,
+          alreadyExists: true
+        }
       }
       
       // 报告开始下载文件
@@ -466,7 +642,7 @@ class DownloadService {
       // 最后检查是否被取消
       if (!this.isDownloading) {
         console.log('🛑 下载已取消，跳过文件保存')
-        return
+        return null
       }
       
       // 保存文件
@@ -481,14 +657,23 @@ class DownloadService {
             status: `文件下载完成: ${fileName}`
           })
         }
+        
+        return {
+          success: true,
+          filePath: relativePath,
+          fileName: fileName,
+          fileSize: buffer.byteLength,
+          alreadyExists: false
+        }
       } else {
         console.warn('⚠️ 下载的文件数据为空:', fileName)
+        return null
       }
       
     } catch (error) {
       if (error.message === '下载已取消') {
         console.log('🛑 文件下载被取消:', error)
-        return
+        return null
       }
       console.error('❌ 下载媒体文件失败:', error)
       throw error
