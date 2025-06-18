@@ -305,8 +305,11 @@ async function copyToken() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  height: 100vh;
   min-height: 100vh;
+  max-height: 100vh;
   padding: 24px;
+  overflow: hidden;
   background: linear-gradient(135deg, rgb(var(--v-theme-gradient-start)) 0%, rgb(var(--v-theme-gradient-end)) 100%);
 }
 
@@ -320,6 +323,8 @@ async function copyToken() {
 @media (max-width: 960px) {
   .login-container {
     padding: 16px;
+    height: 100vh;
+    overflow: hidden;
   }
   
   .gradient-app-bar .v-container {

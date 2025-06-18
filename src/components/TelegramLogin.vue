@@ -678,22 +678,23 @@
 /* 登录包装器 */
 .login-wrapper {
   position: relative;
-  overflow: hidden;
   min-height: 100vh;
+  height: 100vh;
   width: 100%;
   display: flex;
   align-items: center;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .login-container {
-  min-height: 100vh;
+  height: 100vh;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  padding: 40px 24px !important;
+  padding: 20px 24px !important;
   max-width: 100% !important;
-  overflow-x: hidden !important;
+  overflow: hidden !important;
   width: 100% !important;
 }
 
@@ -924,15 +925,30 @@
 
 @media (max-width: 960px) {
   .login-container {
-    padding: 32px 24px !important;
+    padding: 20px 24px !important;
+    height: 100vh;
+    overflow: hidden;
   }
   
   .login-card {
     max-width: 500px !important;
+    max-height: 90vh;
+    overflow-y: auto;
   }
 }
 
 @media (max-width: 600px) {
+  .login-container {
+    padding: 16px 12px !important;
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  .login-card {
+    max-height: 95vh;
+    overflow-y: auto;
+  }
+  
   .card-header {
     padding: 32px 24px 24px;
   }
@@ -1117,6 +1133,48 @@
   .link-btn {
     width: 100%;
     max-width: 200px;
+  }
+}
+
+/* 针对较短屏幕的优化 */
+@media (max-height: 700px) {
+  .login-wrapper,
+  .login-container {
+    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  .login-card {
+    max-height: 95vh;
+    overflow-y: auto;
+  }
+  
+  .card-header {
+    padding: 24px 32px 20px;
+  }
+  
+  .v-card-text {
+    padding: 16px 24px !important;
+  }
+}
+
+@media (max-height: 600px) {
+  .card-header {
+    padding: 16px 24px 12px;
+  }
+  
+  .login-title {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+  
+  .login-subtitle {
+    font-size: 0.875rem;
+  }
+  
+  .logo-avatar {
+    margin-bottom: 8px !important;
   }
 }
 </style>
