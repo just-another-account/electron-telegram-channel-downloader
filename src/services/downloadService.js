@@ -308,81 +308,19 @@ class DownloadService {
   }
 
   /**
-   * 提取详细的媒体信息
+   * 提取简化的媒体信息
    */
   extractDetailedMediaInfo(media, messageId) {
     const mediaType = this.getMediaType(media)
     const fileName = this.getMediaFileName(media, messageId)
     const fileSize = this.getMediaSize(media)
     
-    const baseInfo = {
-      type: mediaType,
+    // 返回简化的媒体信息
+    return {
       fileName: fileName,
       size: fileSize,
       downloadPath: null  // 实际下载后会更新这个路径
     }
-    
-    // 根据媒体类型添加特定信息
-    if (media.photo || media._ === 'messageMediaPhoto') {
-      const photo = media.photo || media
-      return {
-        ...baseInfo,
-        photoId: photo.id ? (typeof photo.id === 'bigint' ? Number(photo.id) : photo.id) : null,
-        accessHash: photo.accessHash ? (typeof photo.accessHash === 'bigint' ? Number(photo.accessHash) : photo.accessHash) : null,
-        fileReference: photo.fileReference ? Array.from(photo.fileReference) : null,
-        date: photo.date ? new Date(photo.date * 1000).toISOString() : null,
-        sizes: photo.sizes ? photo.sizes.map(size => ({
-          type: size._,
-          width: size.w || size.width,
-          height: size.h || size.height,
-          size: size.size
-        })) : null,
-        dcId: photo.dcId || null
-      }
-    }
-    
-    if (media.document) {
-      const doc = media.document
-      return {
-        ...baseInfo,
-        documentId: doc.id ? (typeof doc.id === 'bigint' ? Number(doc.id) : doc.id) : null,
-        accessHash: doc.accessHash ? (typeof doc.accessHash === 'bigint' ? Number(doc.accessHash) : doc.accessHash) : null,
-        fileReference: doc.fileReference ? Array.from(doc.fileReference) : null,
-        originalFileName: doc.fileName || null,
-        mimeType: doc.mimeType || null,
-        date: doc.date ? new Date(doc.date * 1000).toISOString() : null,
-        dcId: doc.dcId || null,
-        // 文档属性
-        attributes: doc.attributes ? doc.attributes.map(attr => ({
-          type: attr._,
-          fileName: attr.fileName,
-          width: attr.w,
-          height: attr.h,
-          duration: attr.duration,
-          title: attr.title,
-          performer: attr.performer
-        })) : null,
-        // 缩略图信息
-        thumbs: doc.thumbs ? doc.thumbs.map(thumb => ({
-          type: thumb._,
-          width: thumb.w,
-          height: thumb.h,
-          size: thumb.size
-        })) : null
-      }
-    }
-    
-    if (media.video) {
-      return {
-        ...baseInfo,
-        duration: media.video.duration || null,
-        width: media.video.w || media.video.width || null,
-        height: media.video.h || media.video.height || null
-      }
-    }
-    
-    // 其他媒体类型
-    return baseInfo
   }
 
   /**
@@ -460,19 +398,33 @@ class DownloadService {
     
     if (media.document) {
       const doc = media.document
-      if (doc.fileName && doc.fileName.trim()) {
-        // 优先使用原始文件名，但确保文件名安全
-        const originalName = this.sanitizeFileName(doc.fileName)
+      
+      // 优先从attributes数组中获取文件名
+      let originalFileName = null
+      if (doc.attributes && doc.attributes.length > 0) {
+        const firstAttr = doc.attributes[0]
+        if (firstAttr.fileName && firstAttr.fileName.trim()) {
+          originalFileName = firstAttr.fileName.trim()
+        }
+      }
+      
+      // 如果attributes中没有，则尝试document的fileName
+      if (!originalFileName && doc.fileName && doc.fileName.trim()) {
+        originalFileName = doc.fileName.trim()
+      }
+      
+      // 如果有原始文件名，使用它
+      if (originalFileName) {
+        const sanitizedName = this.sanitizeFileName(originalFileName)
         
         // 检查是否需要添加扩展名
-        const hasExtension = originalName.includes('.')
+        const hasExtension = sanitizedName.includes('.')
         if (hasExtension) {
-          // 如果原始文件名已有扩展名，直接使用
-          return originalName
+          return sanitizedName
         } else {
-          // 如果没有扩展名，根据MIME类型添加
+          // 根据MIME类型添加扩展名
           const ext = this.getExtensionFromMimeType(doc.mimeType) || 'bin'
-          return `${originalName}.${ext}`
+          return `${sanitizedName}.${ext}`
         }
       }
       
