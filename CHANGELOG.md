@@ -20,6 +20,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Memory leak during large downloads
 - Progress dialog freezing on certain file types
 
+## [1.1.4] - 2025-06-20
+
+### Added
+- 📏 **File Size Filter**: Added minimum and maximum file size filtering options
+  - Set minimum file size to download only files larger than specified value (KB)
+  - Set maximum file size to download only files smaller than specified value (KB)
+  - Set both to download files within a specific size range
+  - Works in combination with existing filename filters
+- 🌍 **Complete Internationalization**: Added file size filter translations for all 8 supported languages
+  - 简体中文 (Simplified Chinese)
+  - 繁體中文 (Traditional Chinese)
+  - English
+  - 日本語 (Japanese)
+  - 한국어 (Korean)
+  - Français (French)
+  - Deutsch (German)
+  - Español (Spanish)
+
+### Changed
+- 🔧 **Enhanced Filter Logic**: Improved `shouldDownloadFile` function to support both filename and file size filtering simultaneously
+- 💻 **Better UI Layout**: Added responsive file size input fields with clear labeling and help text
+
 ## [1.0.0] - 2024-01-15
 
 ### Added

@@ -15,7 +15,7 @@ class DownloadService {
    * 下载频道内容
    */
   async downloadChannelContent(config) {
-    const { dialog, downloadTypes, startMessageId, endMessageId, downloadPath, filenameFilter, filterMode, onProgress } = config
+    const { dialog, downloadTypes, startMessageId, endMessageId, downloadPath, filenameFilter, filterMode, minFileSize, maxFileSize, onProgress } = config
     
     this.isDownloading = true
     this.currentDownloadConfig = config
@@ -72,7 +72,7 @@ class DownloadService {
         
         try {
           // 检查消息是否符合过滤条件
-          const shouldInclude = this.shouldDownloadFile(message, filenameFilter, filterMode)
+          const shouldInclude = this.shouldDownloadFile(message, filenameFilter, filterMode, minFileSize, maxFileSize)
           
           let messageInfo = null
           if (shouldInclude) {
@@ -349,61 +349,96 @@ class DownloadService {
   }
 
   /**
-   * 检查是否应该下载该文件（基于文件名过滤）
+   * 检查是否应该下载该文件（基于文件名过滤和文件大小过滤）
    */
-  shouldDownloadFile(message, filenameFilter, filterMode = 'include') {
-    // 如果没有设置过滤条件，下载所有文件
-    if (!filenameFilter || filenameFilter.trim() === '') {
-      return true
-    }
-
-    const filterKeyword = filenameFilter.toLowerCase().trim()
-    let matchFound = false
-    
-    // 检查消息文本是否包含关键词
-    if (message.message && message.message.toLowerCase().includes(filterKeyword)) {
-      matchFound = true
-    }
-    
-    // 检查文件名是否包含关键词
-    if (!matchFound && message.media) {
-      // 获取原始文件名，优先从attributes获取
-      let originalFileName = ''
+  shouldDownloadFile(message, filenameFilter, filterMode = 'include', minFileSize = null, maxFileSize = null) {
+    // 文件名过滤检查
+    let filenameMatched = true
+    if (filenameFilter && filenameFilter.trim() !== '') {
+      const filterKeyword = filenameFilter.toLowerCase().trim()
+      let matchFound = false
       
-      if (message.media.document) {
-        const doc = message.media.document
-        
-        // 优先从attributes数组中获取文件名
-        if (doc.attributes && doc.attributes.length > 0) {
-          const firstAttr = doc.attributes[0]
-          if (firstAttr.fileName && firstAttr.fileName.trim()) {
-            originalFileName = firstAttr.fileName.trim()
-          }
-        }
-        
-        // 如果attributes中没有，则尝试document的fileName
-        if (!originalFileName && doc.fileName && doc.fileName.trim()) {
-          originalFileName = doc.fileName.trim()
-        }
-      } else if (message.media.photo) {
-        originalFileName = 'photo'
-      } else if (message.media.video) {
-        originalFileName = 'video'
-      }
-      
-      if (originalFileName && originalFileName.toLowerCase().includes(filterKeyword)) {
+      // 检查消息文本是否包含关键词
+      if (message.message && message.message.toLowerCase().includes(filterKeyword)) {
         matchFound = true
       }
+      
+      // 检查文件名是否包含关键词
+      if (!matchFound && message.media) {
+        // 获取原始文件名，优先从attributes获取
+        let originalFileName = ''
+        
+        if (message.media.document) {
+          const doc = message.media.document
+          
+          // 优先从attributes数组中获取文件名
+          if (doc.attributes && doc.attributes.length > 0) {
+            const firstAttr = doc.attributes[0]
+            if (firstAttr.fileName && firstAttr.fileName.trim()) {
+              originalFileName = firstAttr.fileName.trim()
+            }
+          }
+          
+          // 如果attributes中没有，则尝试document的fileName
+          if (!originalFileName && doc.fileName && doc.fileName.trim()) {
+            originalFileName = doc.fileName.trim()
+          }
+        } else if (message.media.photo) {
+          originalFileName = 'photo'
+        } else if (message.media.video) {
+          originalFileName = 'video'
+        }
+        
+        if (originalFileName && originalFileName.toLowerCase().includes(filterKeyword)) {
+          matchFound = true
+        }
+      }
+      
+      // 根据过滤模式确定文件名是否匹配
+      if (filterMode === 'exclude') {
+        // 排除模式：如果匹配到关键词，则不下载
+        filenameMatched = !matchFound
+      } else {
+        // 包含模式：如果匹配到关键词，则下载
+        filenameMatched = matchFound
+      }
     }
     
-    // 根据过滤模式返回结果
-    if (filterMode === 'exclude') {
-      // 排除模式：如果匹配到关键词，则不下载
-      return !matchFound
-    } else {
-      // 包含模式：如果匹配到关键词，则下载
-      return matchFound
+    // 文件大小过滤检查
+    let sizeMatched = true
+    if ((minFileSize !== null && minFileSize > 0) || (maxFileSize !== null && maxFileSize > 0)) {
+      let fileSize = 0
+      
+      // 获取文件大小（字节）
+      if (message.media && message.media.document && message.media.document.size) {
+        fileSize = message.media.document.size
+      } else if (message.media && message.media.photo && message.media.photo.sizes) {
+        // 对于照片，获取最大尺寸的大小
+        const sizes = message.media.photo.sizes
+        if (sizes.length > 0) {
+          const maxSize = sizes[sizes.length - 1]
+          if (maxSize.size) {
+            fileSize = maxSize.size
+          }
+        }
+      }
+      
+      // 转换为KB
+      const fileSizeKB = fileSize / 1024
+      
+      // 检查最小文件大小
+      if (minFileSize !== null && minFileSize > 0 && fileSizeKB < minFileSize) {
+        sizeMatched = false
+      }
+      
+      // 检查最大文件大小
+      if (maxFileSize !== null && maxFileSize > 0 && fileSizeKB > maxFileSize) {
+        sizeMatched = false
+      }
     }
+    
+    // 两个条件都要满足
+    return filenameMatched && sizeMatched
   }
 
   /**

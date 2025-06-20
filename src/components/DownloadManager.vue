@@ -483,6 +483,75 @@
                     </div>
                   </div>
                   
+                  <!-- 文件大小过滤 -->
+                  <div class="form-section mb-8">
+                    <h4 class="section-title mb-4">
+                      <v-icon class="me-2" color="primary">mdi-file-document-outline</v-icon>
+                      {{ $t('download.fileSizeFilter') }}
+                    </h4>
+                    <v-row>
+                      <v-col cols="12" sm="6">
+                        <v-text-field
+                          v-model.number="minFileSize"
+                          :label="$t('download.minFileSizeLabel')"
+                          variant="solo"
+                          bg-color="surface-variant"
+                          :placeholder="$t('download.minFileSizePlaceholder')"
+                          class="modern-input"
+                          type="number"
+                          min="0"
+                          step="1"
+                          rounded="xl"
+                          hide-details="auto"
+                          clearable
+                          suffix="KB"
+                        >
+                          <template v-slot:prepend-inner>
+                            <v-icon color="primary">mdi-chevron-up</v-icon>
+                          </template>
+                        </v-text-field>
+                      </v-col>
+                      <v-col cols="12" sm="6">
+                        <v-text-field
+                          v-model.number="maxFileSize"
+                          :label="$t('download.maxFileSizeLabel')"
+                          variant="solo"
+                          bg-color="surface-variant"
+                          :placeholder="$t('download.maxFileSizePlaceholder')"
+                          class="modern-input"
+                          type="number"
+                          min="0"
+                          step="1"
+                          rounded="xl"
+                          hide-details="auto"
+                          clearable
+                          suffix="KB"
+                        >
+                          <template v-slot:prepend-inner>
+                            <v-icon color="primary">mdi-chevron-down</v-icon>
+                          </template>
+                        </v-text-field>
+                      </v-col>
+                    </v-row>
+                    
+                    <div class="mt-3">
+                      <v-alert
+                        type="info"
+                        variant="tonal"
+                        density="compact"
+                        rounded="lg"
+                        class="filter-help"
+                      >
+                        <div class="text-body-2">
+                          {{ $t('download.fileSizeFilterHelp') }}
+                        </div>
+                        <div class="mt-2 text-caption opacity-75">
+                          {{ $t('download.fileSizeFilterExample') }}
+                        </div>
+                      </v-alert>
+                    </div>
+                  </div>
+                  
                   <!-- 下载路径 -->
                   <div class="form-section mb-8">
                     <h4 class="section-title mb-4">
@@ -723,6 +792,8 @@ const endMessageId = ref('')
 const downloadPath = ref('')
 const filenameFilter = ref('')
 const filterMode = ref('include') // 'include' 或 'exclude'
+const minFileSize = ref(null) // 最小文件大小 (KB)
+const maxFileSize = ref(null) // 最大文件大小 (KB)
 
 // 下载进度
 const downloadProgress = ref({
@@ -929,6 +1000,8 @@ async function startDownload() {
       downloadPath: downloadPath.value,
       filenameFilter: filenameFilter.value?.trim() || null,
       filterMode: filterMode.value,
+      minFileSize: minFileSize.value || null,
+      maxFileSize: maxFileSize.value || null,
       onProgress: (progress) => {
         downloadProgress.value = { ...downloadProgress.value, ...progress }
       }
