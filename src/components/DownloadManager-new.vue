@@ -479,6 +479,8 @@ async function downloadChannelContent(config) {
     // 获取消息
     onProgress({ status: '正在获取消息列表...' })
     const messages = await telegramStore.getChannelHistory(dialog.entity, 1000)
+
+    console.log(messages)
     
     // 过滤消息
     let filteredMessages = messages

@@ -347,11 +347,19 @@ class DownloadService {
     if (media.document || media._ === 'messageMediaDocument') return 'document'
     return 'other'
   }
-
   /**
    * 检查是否应该下载该文件（基于文件名过滤和文件大小过滤）
    */
   shouldDownloadFile(message, filenameFilter, filterMode = 'include', minFileSize = null, maxFileSize = null) {
+    // 调试信息
+    console.log(`\n🔍 shouldDownloadFile 被调用:`, {
+      messageId: message.id,
+      hasMedia: !!message.media,
+      filenameFilter,
+      filterMode, 
+      minFileSize,
+      maxFileSize
+    })
     // 文件名过滤检查
     let filenameMatched = true
     if (filenameFilter && filenameFilter.trim() !== '') {
@@ -403,25 +411,24 @@ class DownloadService {
         filenameMatched = matchFound
       }
     }
-    
-    // 文件大小过滤检查
+      // 文件大小过滤检查
     let sizeMatched = true
     if ((minFileSize !== null && minFileSize > 0) || (maxFileSize !== null && maxFileSize > 0)) {
       let fileSize = 0
       
-      // 获取文件大小（字节）
-      if (message.media && message.media.document && message.media.document.size) {
-        fileSize = message.media.document.size
-      } else if (message.media && message.media.photo && message.media.photo.sizes) {
-        // 对于照片，获取最大尺寸的大小
-        const sizes = message.media.photo.sizes
-        if (sizes.length > 0) {
-          const maxSize = sizes[sizes.length - 1]
-          if (maxSize.size) {
-            fileSize = maxSize.size
-          }
-        }
+      // 使用getMediaSize函数获取文件大小
+      if (message.media) {
+        fileSize = this.getMediaSize(message.media)
       }
+      
+      console.log('📏 文件大小检查:', {
+        hasMedia: !!message.media,
+        fileSize: fileSize,
+        fileSizeKB: (fileSize / 1024).toFixed(2),
+        minFileSize,
+        maxFileSize,
+        mediaType: message.media ? this.getMediaType(message.media) : 'none'
+      })
       
       // 转换为KB
       const fileSizeKB = fileSize / 1024
@@ -429,16 +436,30 @@ class DownloadService {
       // 检查最小文件大小
       if (minFileSize !== null && minFileSize > 0 && fileSizeKB < minFileSize) {
         sizeMatched = false
+        console.log(`❌ 文件太小: ${fileSizeKB.toFixed(2)} KB < ${minFileSize} KB`)
       }
       
       // 检查最大文件大小
       if (maxFileSize !== null && maxFileSize > 0 && fileSizeKB > maxFileSize) {
         sizeMatched = false
+        console.log(`❌ 文件太大: ${fileSizeKB.toFixed(2)} KB > ${maxFileSize} KB`)
       }
-    }
+        if (sizeMatched && fileSize > 0) {
+        console.log(`✅ 文件大小匹配: ${fileSizeKB.toFixed(2)} KB`)
+      } else if (fileSize === 0) {
+        console.log('⚠️ 无法获取文件大小，允许下载该文件')
+        sizeMatched = true  // 如果获取不到文件大小，允许下载
+      }
+    }    
+    const result = filenameMatched && sizeMatched
+    console.log('🎯 shouldDownloadFile 结果:', {
+      filenameMatched,
+      sizeMatched,
+      finalResult: result
+    })
     
     // 两个条件都要满足
-    return filenameMatched && sizeMatched
+    return result
   }
 
   /**
@@ -563,16 +584,45 @@ class DownloadService {
     
     return mimeToExt[mimeType] || mimeType.split('/').pop()
   }
-
   /**
    * 获取媒体文件大小
    */
   getMediaSize(media) {
-    if (media.document?.size) return media.document.size
+    // 处理文档类型
+    if (media.document?.size) {
+      return media.document.size
+    }
+    
+    // 处理照片类型
     if (media.photo?.sizes) {
       const largest = media.photo.sizes[media.photo.sizes.length - 1]
       return largest.size || 0
     }
+    
+    // 处理视频类型
+    if (media.video?.size) {
+      return media.video.size
+    }
+    
+    // 处理不同的媒体消息类型
+    if (media._ === 'messageMediaDocument' && media.document?.size) {
+      return media.document.size
+    }
+    
+    if (media._ === 'messageMediaPhoto' && media.photo?.sizes) {
+      const largest = media.photo.sizes[media.photo.sizes.length - 1]
+      return largest.size || 0
+    }
+    
+    if (media._ === 'messageMediaVideo' && media.video?.size) {
+      return media.video.size
+    }
+    
+    // 处理网页类型中的文档
+    if (media._ === 'messageMediaWebPage' && media.webpage?.document?.size) {
+      return media.webpage.document.size
+    }
+    
     return 0
   }
 
