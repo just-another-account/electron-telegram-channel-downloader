@@ -632,22 +632,39 @@
                     </v-alert>
                   </v-expand-transition>
                   
-                  <!-- 下载按钮 -->
-                  <v-btn
-                    type="submit"
-                    color="primary"
-                    size="x-large"
-                    block
-                    :disabled="!selectedDialog || !formValid || isDownloading"
-                    :loading="isDownloading"
-                    class="download-btn"
-                    rounded="xl"
-                  >
-                    <v-icon start size="24">
-                      {{ isDownloading ? 'mdi-download' : 'mdi-download' }}
-                    </v-icon>
-                    {{ isDownloading ? $t('download.progress.downloading') + '...' : $t('download.startDownload') }}
-                  </v-btn>
+                  <!-- 下载按钮区域 -->
+                  <div class="download-buttons-section">
+                    <v-btn
+                      type="submit"
+                      color="primary"
+                      size="x-large"
+                      :disabled="!selectedDialog || !formValid || isDownloading"
+                      :loading="isDownloading"
+                      class="download-btn flex-grow-1"
+                      rounded="xl"
+                    >
+                      <v-icon start size="24">
+                        {{ isDownloading ? 'mdi-download' : 'mdi-download' }}
+                      </v-icon>
+                      {{ isDownloading ? $t('download.progress.downloading') + '...' : $t('download.startDownload') }}
+                    </v-btn>
+                    
+                    <v-btn
+                      color="orange"
+                      variant="tonal"
+                      size="x-large"
+                      :disabled="isDownloading"
+                      class="reset-btn ml-3"
+                      rounded="xl"
+                      @click="resetForm"
+                    >
+                      <v-icon size="24">mdi-refresh</v-icon>
+                      {{ $t('download.resetForm') }}
+                      <v-tooltip activator="parent" location="top">
+                        {{ $t('download.resetForm') }}
+                      </v-tooltip>
+                    </v-btn>
+                  </div>
                 </div>
               </v-form>
             </v-card-text>
@@ -968,6 +985,19 @@ async function selectDownloadPath() {
     console.error('❌ 选择目录失败:', error)
     showError('选择目录失败: ' + error.message)
   }
+}
+
+// 重置表单
+function resetForm() {
+  downloadTypes.value = ['images', 'videos']
+  startMessageId.value = ''
+  endMessageId.value = ''
+  // downloadPath.value = '' // 不重置下载路径
+  filenameFilter.value = ''
+  filterMode.value = 'include'
+  minFileSize.value = null
+  maxFileSize.value = null
+  // 不重置选中的对话和下载记录
 }
 
 async function startDownload() {
@@ -1408,6 +1438,14 @@ onMounted(async () => {
   opacity: 0.8;
 }
 
+/* 下载按钮区域 */
+.download-buttons-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
 /* 下载按钮 */
 .download-btn {
   height: 64px !important;
@@ -1425,6 +1463,26 @@ onMounted(async () => {
 }
 
 .download-btn:active {
+  transform: translateY(-1px) !important;
+}
+
+/* 重置按钮 */
+.reset-btn {
+  height: 64px !important;
+  min-width: 120px !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  box-shadow: 0 4px 16px rgba(255, 152, 0, 0.3) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  flex-shrink: 0;
+}
+
+.reset-btn:hover:not(:disabled) {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 24px rgba(255, 152, 0, 0.4) !important;
+}
+
+.reset-btn:active {
   transform: translateY(-1px) !important;
 }
 

@@ -111,6 +111,7 @@
     "fileSizeFilterHelp": "设置文件大小过滤范围（单位：KB）。只填最小值表示下载大于此值的文件，只填最大值表示下载小于此值的文件，两个都填表示下载此范围内的文件。",
     "fileSizeFilterExample": "例如：最小 100KB 最大 10240KB（10MB）表示下载 100KB-10MB 范围的文件",
     "startDownload": "开始下载",
+    "resetForm": "重置",
     "cancelDownload": "取消下载",
     "close": "关闭",
     "types": {

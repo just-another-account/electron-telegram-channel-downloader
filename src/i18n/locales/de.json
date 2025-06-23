@@ -111,6 +111,7 @@
     "fileSizeFilterHelp": "Dateigrößenfilter-Bereich festlegen (Einheit: KB). Nur Minimum ausfüllen bedeutet Dateien größer als dieser Wert herunterladen, nur Maximum ausfüllen bedeutet Dateien kleiner als dieser Wert herunterladen, beide ausfüllen bedeutet Dateien in diesem Bereich herunterladen.",
     "fileSizeFilterExample": "Beispiel: Min 100KB Max 10240KB (10MB) bedeutet Download von Dateien im Bereich 100KB-10MB",
     "startDownload": "Download starten",
+    "resetForm": "Zurücksetzen",
     "cancelDownload": "Download abbrechen",
     "close": "Schließen",
     "types": {

@@ -111,6 +111,7 @@
     "fileSizeFilterHelp": "Définir la plage de filtre de taille de fichier (unité: KB). Remplir seulement le minimum signifie télécharger les fichiers plus grands que cette valeur, remplir seulement le maximum signifie télécharger les fichiers plus petits que cette valeur, remplir les deux signifie télécharger les fichiers dans cette plage.",
     "fileSizeFilterExample": "Exemple: Min 100KB Max 10240KB (10MB) signifie télécharger les fichiers dans la plage 100KB-10MB",
     "startDownload": "Commencer le téléchargement",
+    "resetForm": "Réinitialiser",
     "cancelDownload": "Annuler le téléchargement",
     "close": "Fermer",
     "types": {

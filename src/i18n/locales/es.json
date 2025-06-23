@@ -111,6 +111,7 @@
     "fileSizeFilterHelp": "Establecer rango de filtro de tamaño de archivo (unidad: KB). Solo llenar mínimo significa descargar archivos mayores a este valor, solo llenar máximo significa descargar archivos menores a este valor, llenar ambos significa descargar archivos dentro de este rango.",
     "fileSizeFilterExample": "Ejemplo: Mín 100KB Máx 10240KB (10MB) significa descargar archivos en el rango 100KB-10MB",
     "startDownload": "Iniciar descarga",
+    "resetForm": "Restablecer",
     "cancelDownload": "Cancelar descarga",
     "close": "Cerrar",
     "types": {
