@@ -286,15 +286,102 @@ class TelegramService {
   /**
    * 获取消息历史
    */
-  async getMessages(entity, limit = 50) {
+  async getMessages(entity, limit = 50, startMessageId = null, endMessageId = null) {
     if (!this.client || !this.isConnected) {
       throw new Error('客户端未连接')
     }
 
     try {
       console.log('📨 从 Telegram 获取消息，entity:', entity.className, 'ID:', entity.id, '限制:', limit)
-      const messages = await this.client.getMessages(entity, { limit })
+      console.log('📨 消息ID范围:', startMessageId ? `起始ID: ${startMessageId}` : '无起始限制', endMessageId ? `结束ID: ${endMessageId}` : '无结束限制')
+      
+      let messages = []
+      
+      // 如果指定了消息ID范围，需要使用不同的获取策略
+      if (startMessageId || endMessageId) {
+        // 使用消息历史API获取特定范围的消息
+        const options = {
+          limit: Math.max(limit, 100), // 确保获取足够的消息
+        }
+        
+        // 如果有结束ID，从该ID开始向前获取
+        if (endMessageId) {
+          options.offsetId = endMessageId + 1 // 从结束ID的下一个消息开始
+          options.addOffset = 0
+        }
+        
+        // 如果设置了最小ID，使用minId参数
+        if (startMessageId) {
+          options.minId = startMessageId - 1 // minId是exclusive的，所以减1
+        }
+        
+        // 如果设置了最大ID，使用maxId参数  
+        if (endMessageId) {
+          options.maxId = endMessageId + 1 // maxId是exclusive的，所以加1
+        }
+        
+        console.log('📨 使用API选项:', options)
+        
+        // 可能需要分批获取消息来覆盖整个范围
+        let allMessages = []
+        let batchLimit = 100
+        let currentOffsetId = endMessageId || 0
+        
+        while (allMessages.length < limit) {
+          const batchOptions = {
+            limit: batchLimit,
+            offsetId: currentOffsetId,
+            addOffset: 0
+          }
+          
+          if (startMessageId) {
+            batchOptions.minId = startMessageId - 1
+          }
+          
+          console.log(`📨 获取批次，offsetId: ${currentOffsetId}, limit: ${batchLimit}`)
+          const batchMessages = await this.client.getMessages(entity, batchOptions)
+          
+          if (batchMessages.length === 0) {
+            console.log('📨 没有更多消息可获取')
+            break
+          }
+          
+          // 过滤消息到指定范围
+          const filteredBatch = batchMessages.filter(msg => {
+            if (startMessageId && msg.id < startMessageId) return false
+            if (endMessageId && msg.id > endMessageId) return false
+            return true
+          })
+          
+          allMessages.push(...filteredBatch)
+          
+          // 更新偏移ID为最后一个消息的ID
+          const lastMessage = batchMessages[batchMessages.length - 1]
+          if (lastMessage.id <= currentOffsetId) {
+            console.log('📨 到达消息历史末尾')
+            break
+          }
+          currentOffsetId = lastMessage.id
+          
+          // 如果获取的消息数量少于批次限制，说明没有更多消息了
+          if (batchMessages.length < batchLimit) {
+            console.log('📨 获取到的消息少于批次限制，结束获取')
+            break
+          }
+        }
+        
+        messages = allMessages.slice(0, limit)
+        
+      } else {
+        // 没有指定范围，使用原来的简单获取方式
+        messages = await this.client.getMessages(entity, { limit })
+      }
+      
       console.log(`✅ 成功从 Telegram 获取 ${messages.length} 条消息`)
+      
+      // 按ID排序确保顺序正确
+      messages.sort((a, b) => a.id - b.id)
+      
       return messages
     } catch (error) {
       console.error('❌ 获取消息失败:', error)

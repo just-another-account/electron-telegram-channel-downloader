@@ -34,18 +34,12 @@ class DownloadService {
       
       // 获取消息
       onProgress({ status: '正在获取消息列表...' })
-      const messages = await telegramService.getMessages(dialog.entity, 1000)
+      // 直接向telegramService传递消息ID范围，让其处理范围过滤
+      const messages = await telegramService.getMessages(dialog.entity, 1000, startMessageId, endMessageId)
       console.log(messages)
       
-      // 过滤消息
+      // 消息已经在telegramService中按范围过滤了，这里直接使用
       let filteredMessages = messages
-      if (startMessageId || endMessageId) {
-        filteredMessages = messages.filter(msg => {
-          if (startMessageId && msg.id < startMessageId) return false
-          if (endMessageId && msg.id > endMessageId) return false
-          return true
-        })
-      }
       
       onProgress({ 
         total: filteredMessages.length,
@@ -479,9 +473,12 @@ class DownloadService {
       // 优先从attributes数组中获取文件名
       let originalFileName = null
       if (doc.attributes && doc.attributes.length > 0) {
-        const firstAttr = doc.attributes[0]
-        if (firstAttr.fileName && firstAttr.fileName.trim()) {
-          originalFileName = firstAttr.fileName.trim()
+        // 遍历所有attributes寻找fileName
+        for (const attr of doc.attributes) {
+          if (attr.fileName && attr.fileName.trim()) {
+            originalFileName = attr.fileName.trim()
+            break
+          }
         }
       }
       
@@ -490,28 +487,37 @@ class DownloadService {
         originalFileName = doc.fileName.trim()
       }
       
-      // 如果有原始文件名，使用它
+      // 如果有原始文件名，处理它
       if (originalFileName) {
         const sanitizedName = this.sanitizeFileName(originalFileName)
         
-        // 检查是否需要添加扩展名
-        const hasExtension = sanitizedName.includes('.')
-        if (hasExtension) {
+        // 检查文件名是否已有有效扩展名
+        const fileExtension = this.getExtensionFromFileName(sanitizedName)
+        const hasValidExtension = fileExtension !== null
+        
+        if (hasValidExtension) {
           return sanitizedName
         } else {
-          // 根据MIME类型添加扩展名
-          const ext = this.getExtensionFromMimeType(doc.mimeType) || 'bin'
-          return `${sanitizedName}.${ext}`
+          // 文件名没有扩展名或扩展名无效，根据MIME类型添加
+          const mimeExtension = this.getExtensionFromMimeType(doc.mimeType)
+          
+          if (mimeExtension && mimeExtension !== 'bin') {
+            return `${sanitizedName}.${mimeExtension}`
+          } else {
+            // MIME类型也无法确定扩展名，尝试智能推断
+            const inferredExt = this.inferExtensionFromContent(sanitizedName, doc.mimeType)
+            return inferredExt ? `${sanitizedName}.${inferredExt}` : sanitizedName
+          }
         }
       }
       
       // 如果没有原始文件名，使用自定义命名
-      if (doc.mimeType) {
-        const ext = this.getExtensionFromMimeType(doc.mimeType) || 'bin'
-        return `document_${messageId}_${timestamp}.${ext}`
+      const mimeExtension = this.getExtensionFromMimeType(doc.mimeType)
+      if (mimeExtension && mimeExtension !== 'bin') {
+        return `document_${messageId}_${timestamp}.${mimeExtension}`
       }
       
-      return `document_${messageId}_${timestamp}`
+      return `document_${messageId}_${timestamp}.bin`
     }
     
     if (media.video) {
@@ -543,11 +549,14 @@ class DownloadService {
     const mimeToExt = {
       // 图片
       'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
       'image/png': 'png', 
       'image/gif': 'gif',
       'image/webp': 'webp',
       'image/bmp': 'bmp',
       'image/svg+xml': 'svg',
+      'image/tiff': 'tiff',
+      'image/x-icon': 'ico',
       
       // 视频
       'video/mp4': 'mp4',
@@ -556,34 +565,236 @@ class DownloadService {
       'video/mov': 'mov',
       'video/wmv': 'wmv',
       'video/webm': 'webm',
+      'video/flv': 'flv',
+      'video/3gp': '3gp',
+      'video/quicktime': 'mov',
+      'video/x-msvideo': 'avi',
       
       // 音频
+      'audio/mpeg': 'mp3',
       'audio/mp3': 'mp3',
       'audio/wav': 'wav',
       'audio/flac': 'flac',
       'audio/aac': 'aac',
       'audio/ogg': 'ogg',
+      'audio/wma': 'wma',
+      'audio/m4a': 'm4a',
+      'audio/opus': 'opus',
       
       // 文档
       'application/pdf': 'pdf',
-      'application/zip': 'zip',
-      'application/rar': 'rar',
-      'application/7z': '7z',
       'text/plain': 'txt',
       'application/json': 'json',
       'application/xml': 'xml',
+      'text/xml': 'xml',
+      'text/csv': 'csv',
+      'text/rtf': 'rtf',
       
-      // Office文档
+      // Office文档 - Microsoft
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
       'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
       'application/msword': 'doc',
       'application/vnd.ms-excel': 'xls',
-      'application/vnd.ms-powerpoint': 'ppt'
+      'application/vnd.ms-powerpoint': 'ppt',
+      
+      // Office文档 - OpenDocument
+      'application/vnd.oasis.opendocument.text': 'odt',
+      'application/vnd.oasis.opendocument.spreadsheet': 'ods',
+      'application/vnd.oasis.opendocument.presentation': 'odp',
+      
+      // 压缩文件
+      'application/zip': 'zip',
+      'application/rar': 'rar',
+      'application/x-rar': 'rar',
+      'application/x-rar-compressed': 'rar',
+      'application/7z': '7z',
+      'application/x-7z-compressed': '7z',
+      'application/gzip': 'gz',
+      'application/x-gzip': 'gz',
+      'application/x-tar': 'tar',
+      'application/x-bzip2': 'bz2',
+      'application/x-xz': 'xz',
+      
+      // 编程语言文件
+      'text/x-python': 'py',
+      'text/x-java-source': 'java',
+      'text/x-c': 'c',
+      'text/x-c++': 'cpp',
+      'text/x-csharp': 'cs',
+      'text/javascript': 'js',
+      'application/javascript': 'js',
+      'text/typescript': 'ts',
+      'text/x-php': 'php',
+      'text/x-ruby': 'rb',
+      'text/x-perl': 'pl',
+      'text/x-go': 'go',
+      'text/x-rust': 'rs',
+      'text/x-kotlin': 'kt',
+      'text/x-swift': 'swift',
+      
+      // Web相关
+      'text/html': 'html',
+      'text/css': 'css',
+      'application/xhtml+xml': 'xhtml',
+      'application/rss+xml': 'rss',
+      
+      // 可执行文件
+      'application/x-executable': 'exe',
+      'application/x-msdos-program': 'exe',
+      'application/x-msdownload': 'exe',
+      'application/vnd.microsoft.portable-executable': 'exe',
+      'application/x-deb': 'deb',
+      'application/x-rpm': 'rpm',
+      'application/vnd.android.package-archive': 'apk',
+      'application/x-apple-diskimage': 'dmg',
+      'application/x-ms-dos-executable': 'exe',
+      
+      // 数据库
+      'application/x-sqlite3': 'sqlite',
+      'application/vnd.sqlite3': 'sqlite',
+      
+      // 配置文件
+      'application/toml': 'toml',
+      'application/x-yaml': 'yaml',
+      'text/yaml': 'yaml',
+      'application/x-ini': 'ini',
+      
+      // 字体文件
+      'font/ttf': 'ttf',
+      'font/otf': 'otf',
+      'font/woff': 'woff',
+      'font/woff2': 'woff2',
+      
+      // 其他常见类型
+      'application/epub+zip': 'epub',
+      'application/x-shockwave-flash': 'swf',
+      'application/vnd.adobe.flash.movie': 'swf',
+      'application/x-iso9660-image': 'iso',
+      'application/octet-stream': 'bin'
     }
     
-    return mimeToExt[mimeType] || mimeType.split('/').pop()
+    // 首先尝试精确匹配
+    if (mimeToExt[mimeType]) {
+      return mimeToExt[mimeType]
+    }
+    
+    // 如果没有精确匹配，尝试从MIME类型推断
+    const parts = mimeType.split('/')
+    if (parts.length === 2) {
+      const [type, subtype] = parts
+      
+      // 特殊处理某些模式
+      if (subtype.includes('zip')) return 'zip'
+      if (subtype.includes('rar')) return 'rar'
+      if (subtype.includes('7z')) return '7z'
+      if (subtype.includes('gzip')) return 'gz'
+      if (subtype.includes('pdf')) return 'pdf'
+      if (subtype.includes('json')) return 'json'
+      if (subtype.includes('xml')) return 'xml'
+      if (subtype.includes('html')) return 'html'
+      if (subtype.includes('css')) return 'css'
+      if (subtype.includes('javascript')) return 'js'
+      
+      // 对于text类型，尝试移除x-前缀
+      if (type === 'text' && subtype.startsWith('x-')) {
+        return subtype.substring(2)
+      }
+      
+      // 最后才使用subtype作为扩展名，但有长度限制
+      if (subtype.length <= 5 && /^[a-zA-Z0-9]+$/.test(subtype)) {
+        return subtype
+      }
+    }
+    
+    // 默认返回bin
+    return 'bin'
   }
+
+  /**
+   * 从文件名推断扩展名（当MIME类型不可用或不准确时）
+   */
+  getExtensionFromFileName(fileName) {
+    if (!fileName || typeof fileName !== 'string') return null
+    
+    const lastDotIndex = fileName.lastIndexOf('.')
+    if (lastDotIndex === -1 || lastDotIndex === fileName.length - 1) {
+      return null
+    }
+    
+    const extension = fileName.substring(lastDotIndex + 1).toLowerCase()
+    
+    // 验证扩展名（只包含字母数字，且长度合理）
+    if (/^[a-z0-9]{1,10}$/.test(extension)) {
+      return extension
+    }
+    
+    return null
+  }
+
+  /**
+   * 智能推断文件扩展名（基于文件名模式和MIME类型）
+   */
+  inferExtensionFromContent(fileName, mimeType) {
+    if (!fileName) return null
+    
+    const lowerFileName = fileName.toLowerCase()
+    
+    // 基于文件名模式推断
+    const namePatterns = {
+      // 文档类型
+      'readme': 'txt',
+      'changelog': 'txt',
+      'license': 'txt',
+      'makefile': 'txt',
+      'dockerfile': 'txt',
+      
+      // 配置文件
+      'config': 'conf',
+      'configuration': 'conf',
+      'settings': 'conf',
+      
+      // 数据文件
+      'database': 'db',
+      'data': 'dat',
+      'backup': 'bak',
+      'cache': 'cache',
+      
+      // 脚本文件
+      'script': 'sh',
+      'install': 'sh',
+      'setup': 'sh',
+      'run': 'sh'
+    }
+    
+    // 检查完整文件名匹配
+    if (namePatterns[lowerFileName]) {
+      return namePatterns[lowerFileName]
+    }
+    
+    // 检查文件名包含的关键词
+    for (const [pattern, ext] of Object.entries(namePatterns)) {
+      if (lowerFileName.includes(pattern)) {
+        return ext
+      }
+    }
+    
+    // 基于MIME类型的兜底推断
+    if (mimeType) {
+      if (mimeType.startsWith('text/')) return 'txt'
+      if (mimeType.includes('json')) return 'json'
+      if (mimeType.includes('xml')) return 'xml'
+      if (mimeType.includes('zip')) return 'zip'
+      if (mimeType.includes('rar')) return 'rar'
+      if (mimeType.includes('tar')) return 'tar'
+      if (mimeType.includes('gzip')) return 'gz'
+      if (mimeType.includes('executable')) return 'exe'
+      if (mimeType.includes('script')) return 'sh'
+    }
+    
+    return null
+  }
+
   /**
    * 获取媒体文件大小
    */
