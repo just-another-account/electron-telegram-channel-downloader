@@ -32,82 +32,195 @@ class DownloadService {
       const channelDir = `${downloadPath}/${dialog.id}`
       await this.createDirectoryStructure(channelDir, downloadTypes)
       
-      // 获取消息
-      onProgress({ status: '正在获取消息列表...' })
-      // 直接向telegramService传递消息ID范围，让其处理范围过滤
-      const messages = await telegramService.getMessages(dialog.entity, 1000, startMessageId, endMessageId)
-      console.log(messages)
+      // 流式获取和下载消息
+      onProgress({ status: '正在初始化流式下载...' })
       
-      // 消息已经在telegramService中按范围过滤了，这里直接使用
-      let filteredMessages = messages
+      let totalProcessed = 0
+      let currentOffsetId = endMessageId ? endMessageId + 1 : 0
+      const batchSize = 100
+      let hasMoreMessages = true
+      let estimatedTotal = 0
       
-      onProgress({ 
-        total: filteredMessages.length,
-        status: `找到 ${filteredMessages.length} 条消息，开始处理...` 
-      })
-      
-      // 按消息ID排序，确保连续性
-      filteredMessages.sort((a, b) => a.id - b.id)
-      
-      // 处理消息
-      let current = 0
-      
-      for (const message of filteredMessages) {
-        if (!this.isDownloading) {
-          break // 用户取消下载
-        }
-        
-        current++
+      // 如果有消息范围，估算总数
+      if (startMessageId && endMessageId) {
+        estimatedTotal = Math.abs(endMessageId - startMessageId) + 1
         onProgress({ 
-          current,
-          currentFile: `消息 ${message.id}`,
-          status: `正在处理消息 ${message.id}...`
+          total: estimatedTotal,
+          status: `预计处理 ${estimatedTotal} 条消息，开始分批获取和下载...` 
         })
-        
+      } else {
+        onProgress({ 
+          status: '开始分批获取和下载消息，总数未知...' 
+        })
+      }
+      
+      console.log(`� 开始流式下载，批次大小: ${batchSize}`)
+      
+      let batchNumber = 1
+      
+      while (hasMoreMessages && this.isDownloading) {
         try {
-          // 检查消息是否符合过滤条件
-          const shouldInclude = this.shouldDownloadFile(message, filenameFilter, filterMode, minFileSize, maxFileSize)
+          console.log(`\n📦 ===== 批次 ${batchNumber} 开始 =====`)
+          console.log(`� 获取消息批次，offsetId: ${currentOffsetId}, 批次大小: ${batchSize}`)
           
-          let messageInfo = null
-          if (shouldInclude) {
-            // 提取消息数据
-            messageInfo = this.extractMessageData(message)
-            allMessageData.push(messageInfo)
+          // 获取当前批次的消息
+          onProgress({ 
+            status: `正在获取第 ${batchNumber} 批消息...` 
+          })
+          
+          const batchOptions = {
+            limit: batchSize,
+            offsetId: currentOffsetId,
+            addOffset: 0
           }
           
-          // 下载媒体文件
-          if (message.media && this.shouldDownloadMedia(message.media, downloadTypes)) {
-            // 检查文件名过滤
-            if (shouldInclude) {
-              const downloadResult = await this.downloadMediaFile(message, channelDir, downloadTypes, onProgress)
+          if (startMessageId) {
+            batchOptions.minId = startMessageId - 1
+          }
+          
+          const batchMessages = await telegramService.client.getMessages(dialog.entity, batchOptions)
+          
+          if (batchMessages.length === 0) {
+            console.log('📨 没有更多消息可获取，结束下载')
+            hasMoreMessages = false
+            break
+          }
+          
+          // 过滤消息到指定范围
+          const filteredBatch = batchMessages.filter(msg => {
+            if (startMessageId && msg.id < startMessageId) return false
+            if (endMessageId && msg.id > endMessageId) return false
+            return true
+          })
+          
+          console.log(`📨 批次获取到 ${batchMessages.length} 条消息，过滤后 ${filteredBatch.length} 条`)
+          
+          if (filteredBatch.length === 0) {
+            // 更新偏移ID并继续
+            const oldestMessage = batchMessages[batchMessages.length - 1]
+            currentOffsetId = oldestMessage.id
+            batchNumber++
+            continue
+          }
+          
+          // 按消息ID排序，确保连续性
+          filteredBatch.sort((a, b) => a.id - b.id)
+          
+          // 不进行总数估算，保持流式下载的动态特性
+          // 让界面显示实时的处理数量，不显示误导性的总数
+          
+          // 处理当前批次的每条消息
+          for (let i = 0; i < filteredBatch.length; i++) {
+            const message = filteredBatch[i]
+            
+            if (!this.isDownloading) {
+              console.log('🛑 用户取消下载')
+              hasMoreMessages = false
+              break
+            }
+            
+            totalProcessed++
+            
+            const progressUpdate = { 
+              current: totalProcessed,
+              currentFile: `消息 ${message.id}`,
+              status: `正在处理第 ${batchNumber} 批第 ${i + 1}/${filteredBatch.length} 条消息 (ID: ${message.id})`
+            }
+            
+            // 只有在有明确总数估算时才传递total参数
+            if (estimatedTotal > 0) {
+              progressUpdate.total = Math.max(estimatedTotal, totalProcessed)
+            }
+            
+            onProgress(progressUpdate)
+            
+            try {
+              // 检查消息是否符合过滤条件
+              const shouldInclude = this.shouldDownloadFile(message, filenameFilter, filterMode, minFileSize, maxFileSize)
               
-              // 如果下载成功，更新消息数据中的媒体路径信息
-              if (downloadResult && downloadResult.filePath && messageInfo) {
-                messageInfo.media.downloadPath = downloadResult.filePath
-                messageInfo.media.downloadedAt = new Date().toISOString()
-                messageInfo.media.fileExists = true
+              let messageInfo = null
+              if (shouldInclude) {
+                // 提取消息数据
+                messageInfo = this.extractMessageData(message)
+                allMessageData.push(messageInfo)
               }
               
-              this.downloadedCount++
-              onProgress({ downloaded: this.downloadedCount })
-            } else {
-              this.skippedCount++
-              onProgress({ skipped: this.skippedCount })
+              // 下载媒体文件
+              if (message.media && this.shouldDownloadMedia(message.media, downloadTypes)) {
+                // 检查文件名过滤
+                if (shouldInclude) {
+                  const downloadResult = await this.downloadMediaFile(message, channelDir, downloadTypes, onProgress)
+                  
+                  // 如果下载成功，更新消息数据中的媒体路径信息
+                  if (downloadResult && downloadResult.filePath && messageInfo) {
+                    messageInfo.media.downloadPath = downloadResult.filePath
+                    messageInfo.media.downloadedAt = new Date().toISOString()
+                    messageInfo.media.fileExists = true
+                  }
+                  
+                  this.downloadedCount++
+                  onProgress({ downloaded: this.downloadedCount })
+                } else {
+                  this.skippedCount++
+                  onProgress({ skipped: this.skippedCount })
+                }
+              } else if (message.media) {
+                this.skippedCount++
+                onProgress({ skipped: this.skippedCount })
+              }
+              
+            } catch (error) {
+              console.error(`❌ 处理消息 ${message.id} 失败:`, error)
+              this.errorCount++
+              onProgress({ errors: this.errorCount })
             }
-          } else if (message.media) {
-            this.skippedCount++
-            onProgress({ skipped: this.skippedCount })
+            
+            // 添加小延迟避免请求过快
+            await new Promise(resolve => setTimeout(resolve, 50))
           }
           
+          // 检查是否已到达起始消息ID范围
+          const oldestMessage = batchMessages[batchMessages.length - 1]
+          if (startMessageId && oldestMessage.id <= startMessageId) {
+            console.log('📨 已到达起始消息ID范围，停止获取')
+            hasMoreMessages = false
+            break
+          }
+          
+          // 更新偏移ID为当前批次最早消息的ID
+          if (oldestMessage.id === currentOffsetId) {
+            console.log('📨 偏移ID未变化，可能到达消息历史末尾')
+            hasMoreMessages = false
+            break
+          }
+          
+          currentOffsetId = oldestMessage.id
+          
+          // 如果获取的消息数量少于批次限制，说明没有更多消息了
+          if (batchMessages.length < batchSize) {
+            console.log('📨 获取到的消息少于批次限制，结束获取')
+            hasMoreMessages = false
+            break
+          }
+          
+          console.log(`✅ 批次 ${batchNumber} 处理完成，准备获取下一批`)
+          batchNumber++
+          
+          // 批次间添加延迟避免请求过频繁
+          await new Promise(resolve => setTimeout(resolve, 300))
+          
         } catch (error) {
-          console.error(`❌ 处理消息 ${message.id} 失败:`, error)
+          console.error(`❌ 处理批次 ${batchNumber} 失败:`, error)
           this.errorCount++
           onProgress({ errors: this.errorCount })
+          
+          // 继续处理下一批次
+          batchNumber++
+          await new Promise(resolve => setTimeout(resolve, 1000)) // 错误后等待更长时间
         }
-        
-        // 添加小延迟避免请求过快
-        await new Promise(resolve => setTimeout(resolve, 100))
       }
+      
+      console.log(`🎉 流式下载完成，总共处理了 ${totalProcessed} 条消息`)
       
       // 分文件保存消息数据
       await this.saveMessagesJsonByChunks(allMessageData, `${channelDir}/json`)
@@ -118,12 +231,12 @@ class DownloadService {
       
       onProgress({ 
         status: '下载完成！',
-        current: filteredMessages.length 
+        current: totalProcessed 
       })
       
       return {
         success: true,
-        totalMessages: filteredMessages.length,
+        totalMessages: totalProcessed,
         downloaded: this.downloadedCount,
         skipped: this.skippedCount,
         errors: this.errorCount,

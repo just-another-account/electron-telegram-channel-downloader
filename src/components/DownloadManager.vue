@@ -699,11 +699,16 @@
             <div class="d-flex justify-space-between align-center mb-3">
               <span class="progress-label">{{ $t('download.progress.totalProgress') }}</span>
               <span class="progress-count">
-                {{ downloadProgress.current }} / {{ downloadProgress.total }}
+                <template v-if="downloadProgress.total && downloadProgress.total > 0">
+                  {{ downloadProgress.current }} / {{ downloadProgress.total }}
+                </template>
+                <template v-else>
+                  {{ downloadProgress.current || 0 }}
+                </template>
               </span>
             </div>
             <v-progress-linear
-              :model-value="(downloadProgress.current / downloadProgress.total) * 100"
+              :model-value="downloadProgress.total > 0 ? (downloadProgress.current / downloadProgress.total) * 100 : 0"
               height="12"
               color="primary"
               rounded

@@ -325,9 +325,10 @@ class TelegramService {
         // 可能需要分批获取消息来覆盖整个范围
         let allMessages = []
         let batchLimit = 100
-        let currentOffsetId = endMessageId || 0
+        let currentOffsetId = endMessageId ? endMessageId + 1 : 0  // 从结束ID的下一个消息开始
+        let hasMoreMessages = true
         
-        while (allMessages.length < limit) {
+        while ((limit === Number.MAX_SAFE_INTEGER || allMessages.length < limit) && hasMoreMessages) {
           const batchOptions = {
             limit: batchLimit,
             offsetId: currentOffsetId,
@@ -338,11 +339,12 @@ class TelegramService {
             batchOptions.minId = startMessageId - 1
           }
           
-          console.log(`📨 获取批次，offsetId: ${currentOffsetId}, limit: ${batchLimit}`)
+          console.log(`📨 获取批次 ${Math.floor(allMessages.length / batchLimit) + 1}，offsetId: ${currentOffsetId}, limit: ${batchLimit}, 已获取: ${allMessages.length}`)
           const batchMessages = await this.client.getMessages(entity, batchOptions)
           
           if (batchMessages.length === 0) {
             console.log('📨 没有更多消息可获取')
+            hasMoreMessages = false
             break
           }
           
@@ -355,26 +357,91 @@ class TelegramService {
           
           allMessages.push(...filteredBatch)
           
-          // 更新偏移ID为最后一个消息的ID
-          const lastMessage = batchMessages[batchMessages.length - 1]
-          if (lastMessage.id <= currentOffsetId) {
-            console.log('📨 到达消息历史末尾')
+          // 更新偏移ID：Telegram API 返回的消息是按时间倒序的（ID从大到小）
+          // 所以下次获取应该使用最早（最小ID）的消息作为偏移
+          const oldestMessage = batchMessages[batchMessages.length - 1]
+          const newestMessage = batchMessages[0]
+          
+          console.log(`📨 批次消息范围: ${oldestMessage.id} - ${newestMessage.id}, 过滤后获得: ${filteredBatch.length} 条`)
+          
+          // 检查是否已到达起始消息ID范围
+          if (startMessageId && oldestMessage.id <= startMessageId) {
+            console.log('📨 已到达起始消息ID范围，停止获取')
+            hasMoreMessages = false
             break
           }
-          currentOffsetId = lastMessage.id
+          
+          // 更新偏移ID为当前批次最早消息的ID，继续向前获取更早的消息
+          if (oldestMessage.id === currentOffsetId) {
+            console.log('📨 偏移ID未变化，可能到达消息历史末尾')
+            hasMoreMessages = false
+            break
+          }
+          
+          currentOffsetId = oldestMessage.id
           
           // 如果获取的消息数量少于批次限制，说明没有更多消息了
           if (batchMessages.length < batchLimit) {
             console.log('📨 获取到的消息少于批次限制，结束获取')
+            hasMoreMessages = false
             break
           }
+          
+          // 添加延迟避免请求过频繁
+          await new Promise(resolve => setTimeout(resolve, 200))
         }
         
-        messages = allMessages.slice(0, limit)
+        messages = limit === Number.MAX_SAFE_INTEGER ? allMessages : allMessages.slice(0, limit)
         
       } else {
-        // 没有指定范围，使用原来的简单获取方式
-        messages = await this.client.getMessages(entity, { limit })
+        // 没有指定范围，也需要分批获取以突破单次请求限制
+        console.log('📨 没有指定消息范围，分批获取最新消息')
+        let allMessages = []
+        let batchLimit = 100
+        let currentOffsetId = 0
+        let hasMoreMessages = true
+        
+        while ((limit === Number.MAX_SAFE_INTEGER || allMessages.length < limit) && hasMoreMessages) {
+          const batchOptions = {
+            limit: limit === Number.MAX_SAFE_INTEGER ? batchLimit : Math.min(batchLimit, limit - allMessages.length),
+            offsetId: currentOffsetId,
+            addOffset: 0
+          }
+          
+          console.log(`📨 获取批次 ${Math.floor(allMessages.length / batchLimit) + 1}，offsetId: ${currentOffsetId}, limit: ${batchOptions.limit}, 已获取: ${allMessages.length}`)
+          const batchMessages = await this.client.getMessages(entity, batchOptions)
+          
+          if (batchMessages.length === 0) {
+            console.log('📨 没有更多消息可获取')
+            hasMoreMessages = false
+            break
+          }
+          
+          allMessages.push(...batchMessages)
+          
+          // 更新偏移ID为当前批次最早消息的ID
+          const oldestMessage = batchMessages[batchMessages.length - 1]
+          
+          if (oldestMessage.id === currentOffsetId) {
+            console.log('📨 偏移ID未变化，到达消息历史末尾')
+            hasMoreMessages = false
+            break
+          }
+          
+          currentOffsetId = oldestMessage.id
+          
+          // 如果获取的消息数量少于批次限制，说明没有更多消息了
+          if (batchMessages.length < batchOptions.limit) {
+            console.log('📨 获取到的消息少于批次限制，结束获取')
+            hasMoreMessages = false
+            break
+          }
+          
+          // 添加延迟避免请求过频繁
+          await new Promise(resolve => setTimeout(resolve, 200))
+        }
+        
+        messages = allMessages
       }
       
       console.log(`✅ 成功从 Telegram 获取 ${messages.length} 条消息`)
