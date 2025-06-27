@@ -406,7 +406,7 @@
                       :label="$t('download.filenameFilterLabel')"
                       variant="solo"
                       bg-color="surface-variant"
-                      :placeholder="$t('download.filenameFilterPlaceholder')"
+                      :placeholder="'例如: 视频|电影|music 或 .jpg|.png'"
                       class="modern-input"
                       rounded="xl"
                       hide-details="auto"
@@ -416,6 +416,36 @@
                         <v-icon color="primary">mdi-magnify</v-icon>
                       </template>
                     </v-text-field>
+                    
+                    <!-- 关键字chips显示 -->
+                    <div v-if="filenameFilter && filenameFilter.trim()" class="mt-3 filter-keywords-section">
+                      <div class="d-flex flex-wrap align-center filter-keywords-chips">
+                        <span class="text-caption text-medium-emphasis me-2">过滤关键字：</span>
+                        <v-chip
+                          v-for="(keyword, index) in filenameFilterKeywords"
+                          :key="index"
+                          size="small"
+                          :color="filterMode === 'exclude' ? 'error' : 'success'"
+                          variant="tonal"
+                          class="ma-1"
+                        >
+                          <v-icon start size="14">
+                            {{ filterMode === 'exclude' ? 'mdi-minus-circle' : 'mdi-check-circle' }}
+                          </v-icon>
+                          {{ keyword }}
+                        </v-chip>
+                        <v-chip
+                          v-if="filenameFilterKeywords.length > 1"
+                          size="small"
+                          color="info"
+                          variant="outlined"
+                          class="ma-1"
+                        >
+                          <v-icon start size="14">mdi-information-outline</v-icon>
+                          任一匹配
+                        </v-chip>
+                      </div>
+                    </div>
                     
                     <!-- 过滤模式选择 -->
                     <div v-if="filenameFilter && filenameFilter.trim()" class="mt-4">
@@ -459,24 +489,23 @@
                         class="filter-help"
                       >
                         <div class="text-body-2">
-                          
                           {{ 
                             filenameFilter && filenameFilter.trim() 
                               ? (filterMode === 'exclude' 
-                                  ? $t('download.filenameFilterHelpExclude') 
-                                  : $t('download.filenameFilterHelpInclude')
+                                  ? '将排除包含任一关键字的文件。使用 | 分隔多个关键字' 
+                                  : '只下载包含任一关键字的文件。使用 | 分隔多个关键字'
                                 )
-                              : $t('download.filenameFilterHelp')
+                              : '可以按文件名过滤文件。支持多个关键字，使用 | 分隔'
                           }}
                         </div>
                         <div class="mt-2 text-caption opacity-75">
                           {{ 
                             filenameFilter && filenameFilter.trim() 
                               ? (filterMode === 'exclude' 
-                                  ? $t('download.filenameFilterExampleExclude') 
-                                  : $t('download.filenameFilterExampleInclude')
+                                  ? '示例：video|mp4|avi - 排除包含 video、mp4 或 avi 的文件' 
+                                  : '示例：image|jpg|png - 只下载包含 image、jpg 或 png 的文件'
                                 )
-                              : $t('download.filenameFilterExample')
+                              : '示例：video|mp4 表示匹配包含 video 或 mp4 的文件名'
                           }}
                         </div>
                       </v-alert>
@@ -860,6 +889,14 @@ const downloadTypeOptions = computed(() => [
     description: '下载其他类型文件'
   }
 ])
+
+// 计算属性 - 文件名过滤关键字
+const filenameFilterKeywords = computed(() => {
+  if (!filenameFilter.value || !filenameFilter.value.trim()) {
+    return []
+  }
+  return filenameFilter.value.trim().split('|').map(k => k.trim()).filter(k => k.length > 0)
+})
 
 // 计算属性
 const downloadRecordSummary = computed(() => {
@@ -1841,5 +1878,17 @@ onMounted(async () => {
 .filter-mode-group .v-label {
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+/* 关键字chips样式 */
+.filter-keywords-section {
+  padding: 12px 16px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 12px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.1);
+}
+
+.filter-keywords-chips {
+  gap: 8px;
 }
 </style>

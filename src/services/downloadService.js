@@ -36,7 +36,7 @@ class DownloadService {
       onProgress({ status: '正在初始化流式下载...' })
       
       let totalProcessed = 0
-      let currentOffsetId = endMessageId ? endMessageId + 1 : 0
+      let currentOffsetId = 0  // 0 表示从最新消息开始
       const batchSize = 100
       let hasMoreMessages = true
       let estimatedTotal = 0
@@ -46,11 +46,11 @@ class DownloadService {
         estimatedTotal = Math.abs(endMessageId - startMessageId) + 1
         onProgress({ 
           total: estimatedTotal,
-          status: `预计处理 ${estimatedTotal} 条消息，开始分批获取和下载...` 
+          status: `预计处理 ${estimatedTotal} 条消息，从最新消息开始分批获取...` 
         })
       } else {
         onProgress({ 
-          status: '开始分批获取和下载消息，总数未知...' 
+          status: '从最新消息开始分批获取和下载消息，总数未知...' 
         })
       }
       
@@ -69,16 +69,33 @@ class DownloadService {
           })
           
           const batchOptions = {
-            limit: batchSize,
-            offsetId: currentOffsetId,
-            addOffset: 0
+            limit: batchSize
+          }
+          
+          // 设置offsetId以获取更早的消息
+          if (currentOffsetId > 0) {
+            batchOptions.offsetId = currentOffsetId
+          }
+          
+          // 设置消息范围限制
+          if (endMessageId) {
+            batchOptions.maxId = endMessageId  // 不下载比这个ID更新的消息
           }
           
           if (startMessageId) {
-            batchOptions.minId = startMessageId - 1
+            batchOptions.minId = startMessageId - 1  // 不下载比这个ID更旧的消息
           }
           
           const batchMessages = await telegramService.client.getMessages(dialog.entity, batchOptions)
+          
+          console.log(`📨 API返回结果:`, {
+            batchNumber,
+            requestedLimit: batchSize,
+            actualReceived: batchMessages.length,
+            offsetId: currentOffsetId,
+            firstMessageId: batchMessages.length > 0 ? batchMessages[0].id : 'none',
+            lastMessageId: batchMessages.length > 0 ? batchMessages[batchMessages.length - 1].id : 'none'
+          })
           
           if (batchMessages.length === 0) {
             console.log('📨 没有更多消息可获取，结束下载')
@@ -96,15 +113,22 @@ class DownloadService {
           console.log(`📨 批次获取到 ${batchMessages.length} 条消息，过滤后 ${filteredBatch.length} 条`)
           
           if (filteredBatch.length === 0) {
-            // 更新偏移ID并继续
-            const oldestMessage = batchMessages[batchMessages.length - 1]
-            currentOffsetId = oldestMessage.id
+            // 如果当前批次没有匹配的消息，使用原始批次的最后一条消息更新偏移ID
+            if (batchMessages.length > 0) {
+              const oldestMessage = batchMessages[batchMessages.length - 1]
+              currentOffsetId = oldestMessage.id
+              console.log(`📄 批次无匹配消息，更新 offsetId 为: ${currentOffsetId}`)
+            } else {
+              // 没有更多消息了
+              hasMoreMessages = false
+              break
+            }
             batchNumber++
             continue
           }
           
-          // 按消息ID排序，确保连续性
-          filteredBatch.sort((a, b) => a.id - b.id)
+          // 按消息ID降序排序，确保从最新到最旧的顺序
+          filteredBatch.sort((a, b) => b.id - a.id)
           
           // 不进行总数估算，保持流式下载的动态特性
           // 让界面显示实时的处理数量，不显示误导性的总数
@@ -138,6 +162,14 @@ class DownloadService {
               // 检查消息是否符合过滤条件
               const shouldInclude = this.shouldDownloadFile(message, filenameFilter, filterMode, minFileSize, maxFileSize)
               
+              console.log(`📋 消息 ${message.id} 过滤检查:`, {
+                messageId: message.id,
+                hasMedia: !!message.media,
+                shouldInclude,
+                filenameFilter,
+                filterMode
+              })
+              
               let messageInfo = null
               if (shouldInclude) {
                 // 提取消息数据
@@ -147,8 +179,11 @@ class DownloadService {
               
               // 下载媒体文件
               if (message.media && this.shouldDownloadMedia(message.media, downloadTypes)) {
+                console.log(`🎬 消息 ${message.id} 媒体类型检查通过，准备下载检查`)
+                
                 // 检查文件名过滤
                 if (shouldInclude) {
+                  console.log(`✅ 消息 ${message.id} 开始下载`)
                   const downloadResult = await this.downloadMediaFile(message, channelDir, downloadTypes, onProgress)
                   
                   // 如果下载成功，更新消息数据中的媒体路径信息
@@ -161,10 +196,12 @@ class DownloadService {
                   this.downloadedCount++
                   onProgress({ downloaded: this.downloadedCount })
                 } else {
+                  console.log(`⏭️ 消息 ${message.id} 被过滤器排除，跳过下载`)
                   this.skippedCount++
                   onProgress({ skipped: this.skippedCount })
                 }
               } else if (message.media) {
+                console.log(`⏭️ 消息 ${message.id} 媒体类型不匹配，跳过`)
                 this.skippedCount++
                 onProgress({ skipped: this.skippedCount })
               }
@@ -179,22 +216,26 @@ class DownloadService {
             await new Promise(resolve => setTimeout(resolve, 50))
           }
           
+          // 更新offsetId为当前批次最旧消息的ID（用于下一批次获取更早的消息）
+          const oldestInBatch = batchMessages[batchMessages.length - 1]
+          
           // 检查是否已到达起始消息ID范围
-          const oldestMessage = batchMessages[batchMessages.length - 1]
-          if (startMessageId && oldestMessage.id <= startMessageId) {
+          if (startMessageId && oldestInBatch.id <= startMessageId) {
             console.log('📨 已到达起始消息ID范围，停止获取')
             hasMoreMessages = false
             break
           }
           
-          // 更新偏移ID为当前批次最早消息的ID
-          if (oldestMessage.id === currentOffsetId) {
+          // 防止无限循环：如果offsetId没有变化，说明可能到达了消息历史的末尾
+          if (oldestInBatch.id === currentOffsetId) {
             console.log('📨 偏移ID未变化，可能到达消息历史末尾')
             hasMoreMessages = false
             break
           }
           
-          currentOffsetId = oldestMessage.id
+          // 更新offsetId为当前批次最旧消息的ID
+          currentOffsetId = oldestInBatch.id
+          console.log(`📄 更新 offsetId 为: ${currentOffsetId}，准备获取更早的消息`)
           
           // 如果获取的消息数量少于批次限制，说明没有更多消息了
           if (batchMessages.length < batchSize) {
@@ -462,7 +503,7 @@ class DownloadService {
     console.log(`\n🔍 shouldDownloadFile 被调用:`, {
       messageId: message.id,
       hasMedia: !!message.media,
-      filenameFilter,
+      filenameFilter: filenameFilter ? filenameFilter.split('|') : null,
       filterMode, 
       minFileSize,
       maxFileSize
@@ -470,17 +511,19 @@ class DownloadService {
     // 文件名过滤检查
     let filenameMatched = true
     if (filenameFilter && filenameFilter.trim() !== '') {
-      const filterKeyword = filenameFilter.toLowerCase().trim()
+      // 支持多个关键字，使用 | 分隔
+      const filterKeywords = filenameFilter.toLowerCase().trim().split('|').map(k => k.trim()).filter(k => k.length > 0)
       let matchFound = false
       
-      // 检查消息文本是否包含关键词
-      if (message.message && message.message.toLowerCase().includes(filterKeyword)) {
-        matchFound = true
+      // 检查消息文本是否包含任一关键词
+      if (message.message) {
+        const messageText = message.message.toLowerCase()
+        matchFound = filterKeywords.some(keyword => messageText.includes(keyword))
       }
       
-      // 检查文件名是否包含关键词
-      if (!matchFound && message.media) {
-        // 获取原始文件名，优先从attributes获取
+      // 检查文件名是否包含任一关键词（无论消息文本是否匹配都要检查）
+      if (message.media) {
+        // 获取实际的文件名（使用与getMediaFileName相同的逻辑）
         let originalFileName = ''
         
         if (message.media.document) {
@@ -488,9 +531,12 @@ class DownloadService {
           
           // 优先从attributes数组中获取文件名
           if (doc.attributes && doc.attributes.length > 0) {
-            const firstAttr = doc.attributes[0]
-            if (firstAttr.fileName && firstAttr.fileName.trim()) {
-              originalFileName = firstAttr.fileName.trim()
+            // 遍历所有attributes寻找fileName
+            for (const attr of doc.attributes) {
+              if (attr.fileName && attr.fileName.trim()) {
+                originalFileName = attr.fileName.trim()
+                break
+              }
             }
           }
           
@@ -504,8 +550,19 @@ class DownloadService {
           originalFileName = 'video'
         }
         
-        if (originalFileName && originalFileName.toLowerCase().includes(filterKeyword)) {
-          matchFound = true
+        // 如果还没有匹配，检查文件名
+        if (!matchFound && originalFileName) {
+          const lowerFileName = originalFileName.toLowerCase()
+          matchFound = filterKeywords.some(keyword => lowerFileName.includes(keyword))
+          
+          // 详细调试输出
+          console.log(`🔍 检查文件名过滤:`, {
+            originalFileName,
+            lowerFileName,
+            filterKeywords,
+            matchFound: matchFound,
+            filterMode
+          })
         }
       }
       
@@ -517,6 +574,19 @@ class DownloadService {
         // 包含模式：如果匹配到关键词，则下载
         filenameMatched = matchFound
       }
+      
+      // 增强调试信息
+      console.log(`🔍 文件名过滤结果:`, {
+        messageId: message.id,
+        filterKeywords,
+        filterMode,
+        matchFound,
+        filenameMatched,
+        messageText: message.message ? message.message.substring(0, 50) + '...' : 'none',
+        fileName: message.media && message.media.document ? 
+          (message.media.document.attributes?.[0]?.fileName || message.media.document.fileName || 'unknown') : 
+          (message.media ? (message.media.photo ? 'photo' : 'video') : 'no media')
+      })
     }
       // 文件大小过滤检查
     let sizeMatched = true
