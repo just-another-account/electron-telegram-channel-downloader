@@ -260,7 +260,7 @@ class TelegramService {
   /**
    * 获取对话列表
    */
-  async getDialogs(limit = 100) {
+  async getDialogs(limit = 1000) {
     if (!this.client) {
       await this.initialize()
     }
