@@ -171,7 +171,7 @@ export const useTelegramStore = defineStore('telegram', () => {
         throw new Error('未登录或客户端未准备就绪')
       }
       
-      const dialogs = await telegramService.getDialogs(100)
+      const dialogs = await telegramService.getDialogs(1000)
       return dialogs
     } catch (error) {
       console.error('❌ 获取对话列表失败:', error)

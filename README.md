@@ -25,7 +25,8 @@
 - 📋 **Channel Management**: Browse and select from all accessible channels/groups
 - 📥 **Bulk Download**: Download media files and messages in batch
 - 🎯 **Content Filtering**: Filter by media type (images, videos, documents, others)
-- 📏 **File Size Filter**: Filter files by minimum/maximum size (KB) for precise control
+- � **Multi-media Support**: Automatically download all media files from messages containing multiple items (albums/media groups)
+- �📏 **File Size Filter**: Filter files by minimum/maximum size (KB) for precise control
 - 🔍 **Filename Filter**: Include or exclude files based on filename patterns
 - 📊 **Real-time Progress**: Live download progress with detailed statistics
 - 💾 **Data Export**: Export message data as structured JSON files

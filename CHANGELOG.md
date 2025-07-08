@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.8] - 2025-07-08
+
+### Added
+- **Multi-media message support**: Now downloads all media files from messages containing multiple media items (media groups/albums)
+- **Dialog filter system**: Added search and filter functionality above the dialog list for easier dialog management
+  - Search dialogs by name, title, or ID
+  - Filter dialogs by type (channels, groups, users)
+  - Real-time filtering with result statistics
+  - Smart empty state handling with reset options
+- Enhanced file naming for media groups with sequential numbering
+- Improved media group detection and handling
+- Internationalization support for filter functionality (Chinese and English)
+
+### Changed
+- Enhanced download service to better handle media groups and albums
+- Updated file naming convention to distinguish media group files
+
+### Fixed
+- Issue where only the first media file was downloaded from messages containing multiple media items
+
 ## [Unreleased]
 
 ### Added

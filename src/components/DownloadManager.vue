@@ -33,6 +33,89 @@
               </div>
             </div>
             
+            <!-- 对话筛选器 -->
+            <div class="dialog-filter pa-4">
+              <v-text-field
+                v-model="dialogSearchText"
+                :placeholder="$t('download.searchDialogPlaceholder')"
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+                class="mb-3"
+                @clear="dialogSearchText = ''"
+              >
+                <template v-slot:append-inner>
+                  <v-menu>
+                    <template v-slot:activator="{ props }">
+                      <v-btn
+                        icon
+                        variant="text"
+                        size="small"
+                        v-bind="props"
+                        class="filter-options-btn"
+                      >
+                        <v-icon>mdi-filter-variant</v-icon>
+                        <v-tooltip activator="parent" location="bottom">
+                          {{ $t('download.filterOptions') }}
+                        </v-tooltip>
+                      </v-btn>
+                    </template>
+                    <v-card min-width="240" class="filter-menu">
+                      <v-card-text class="pb-2">
+                        <div class="text-subtitle-2 mb-2">{{ $t('download.filterByType') }}</div>
+                        <v-checkbox
+                          v-model="dialogTypeFilters.channels"
+                          :label="$t('download.channels')"
+                          density="compact"
+                          hide-details
+                          class="mb-1"
+                        ></v-checkbox>
+                        <v-checkbox
+                          v-model="dialogTypeFilters.groups"
+                          :label="$t('download.groups')"
+                          density="compact"
+                          hide-details
+                          class="mb-1"
+                        ></v-checkbox>
+                        <v-checkbox
+                          v-model="dialogTypeFilters.users"
+                          :label="$t('download.users')"
+                          density="compact"
+                          hide-details
+                        ></v-checkbox>
+                      </v-card-text>
+                      <v-card-actions class="pt-0">
+                        <v-btn
+                          variant="text"
+                          size="small"
+                          @click="resetDialogFilters"
+                        >
+                          {{ $t('common.reset') }}
+                        </v-btn>
+                      </v-card-actions>
+                    </v-card>
+                  </v-menu>
+                </template>
+              </v-text-field>
+              
+              <!-- 筛选结果统计 -->
+              <div v-if="dialogSearchText || !allDialogTypesSelected" class="filter-info">
+                <v-chip
+                  size="x-small"
+                  variant="tonal"
+                  color="primary"
+                  class="me-2"
+                >
+                  {{ filteredDialogs.length }} / {{ dialogs.length }}
+                </v-chip>
+                <span class="text-caption text-medium-emphasis">
+                  {{ $t('download.dialogsFound') }}
+                </span>
+              </div>
+            </div>
+            
             <!-- 对话列表内容 -->
             <v-card-text class="pa-0 dialog-list">
               <v-list class="py-0 modern-list">
@@ -49,7 +132,7 @@
                 <!-- 对话项 -->
                 <template v-else>
                   <v-list-item
-                    v-for="dialog in dialogs"
+                    v-for="dialog in filteredDialogs"
                     :key="dialog.id"
                     :class="{ 
                       'selected-dialog': selectedDialog?.id === dialog.id,
@@ -105,18 +188,30 @@
                 </template>
                 
                 <!-- 空状态 -->
-                <div v-if="!loadingDialogs && dialogs.length === 0" class="empty-state">
+                <div v-if="!loadingDialogs && filteredDialogs.length === 0" class="empty-state">
                   <v-icon size="48" color="grey-lighten-1" class="mb-4">
                     mdi-chat-outline
                   </v-icon>
-                  <p class="empty-text">{{ $t('common.noData') }}</p>
+                  <p class="empty-text">
+                    {{ dialogs.length === 0 ? $t('common.noData') : $t('download.noMatchingDialogs') }}
+                  </p>
                   <v-btn 
+                    v-if="dialogs.length === 0"
                     color="primary" 
                     variant="tonal" 
                     @click="refreshDialogs"
                     size="small"
                   >
                     {{ $t('common.refresh') }}
+                  </v-btn>
+                  <v-btn 
+                    v-else
+                    color="primary" 
+                    variant="tonal" 
+                    @click="resetDialogFilters"
+                    size="small"
+                  >
+                    {{ $t('common.reset') }}
                   </v-btn>
                 </div>
               </v-list>
@@ -836,6 +931,14 @@ const isDownloading = ref(false)
 const showProgressDialog = ref(false)
 const downloadRecord = ref(null)
 
+// 对话筛选相关
+const dialogSearchText = ref('')
+const dialogTypeFilters = ref({
+  channels: true,
+  groups: true,
+  users: true
+})
+
 // 表单数据
 const downloadTypes = ref(['images', 'videos'])
 const startMessageId = ref('')
@@ -896,6 +999,42 @@ const filenameFilterKeywords = computed(() => {
     return []
   }
   return filenameFilter.value.trim().split('|').map(k => k.trim()).filter(k => k.length > 0)
+})
+
+// 计算属性 - 筛选后的对话列表
+const filteredDialogs = computed(() => {
+  let result = dialogs.value
+  
+  // 按搜索文本筛选
+  if (dialogSearchText.value && dialogSearchText.value.trim()) {
+    const searchText = dialogSearchText.value.trim().toLowerCase()
+    result = result.filter(dialog => {
+      const title = (dialog.title || '').toLowerCase()
+      const name = (dialog.name || '').toLowerCase()
+      const id = String(dialog.id || '').toLowerCase()
+      
+      return title.includes(searchText) || 
+             name.includes(searchText) || 
+             id.includes(searchText)
+    })
+  }
+  
+  // 按类型筛选
+  result = result.filter(dialog => {
+    if (dialog.isChannel && !dialogTypeFilters.value.channels) return false
+    if (dialog.isGroup && !dialogTypeFilters.value.groups) return false
+    if (dialog.isUser && !dialogTypeFilters.value.users) return false
+    return true
+  })
+  
+  return result
+})
+
+// 计算属性 - 是否选择了所有对话类型
+const allDialogTypesSelected = computed(() => {
+  return dialogTypeFilters.value.channels && 
+         dialogTypeFilters.value.groups && 
+         dialogTypeFilters.value.users
 })
 
 // 计算属性
@@ -966,6 +1105,16 @@ async function refreshDialogs() {
 function selectDialog(dialog) {
   selectedDialog.value = dialog
   loadDownloadRecord(dialog.id)
+}
+
+// 重置对话筛选器
+function resetDialogFilters() {
+  dialogSearchText.value = ''
+  dialogTypeFilters.value = {
+    channels: true,
+    groups: true,
+    users: true
+  }
 }
 
 // 加载下载记录
@@ -1227,9 +1376,36 @@ onMounted(async () => {
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+/* 对话筛选器 */
+.dialog-filter {
+  background: rgba(var(--v-theme-surface), 0.5);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.filter-options-btn {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.filter-options-btn:hover {
+  opacity: 1;
+}
+
+.filter-menu {
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.filter-info {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+}
+
 /* 对话列表 */
 .dialog-list {
-  max-height: calc(100vh - 200px);
+  max-height: calc(100vh - 250px);
   overflow-y: auto;
 }
 

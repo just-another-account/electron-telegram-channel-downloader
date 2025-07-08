@@ -26,6 +26,7 @@ class DownloadService {
     // 移到外面，确保finally块能访问
     let allMessageData = []
     let recordSaved = false
+    let processedGroupIds = new Set() // 用于跟踪已处理的媒体组
 
     try {
       // 创建基础目录
@@ -177,24 +178,58 @@ class DownloadService {
                 allMessageData.push(messageInfo)
               }
               
-              // 下载媒体文件
+              // 下载媒体文件（支持多媒体消息）
               if (message.media && this.shouldDownloadMedia(message.media, downloadTypes)) {
                 console.log(`🎬 消息 ${message.id} 媒体类型检查通过，准备下载检查`)
                 
                 // 检查文件名过滤
                 if (shouldInclude) {
                   console.log(`✅ 消息 ${message.id} 开始下载`)
-                  const downloadResult = await this.downloadMediaFile(message, channelDir, downloadTypes, onProgress)
                   
-                  // 如果下载成功，更新消息数据中的媒体路径信息
-                  if (downloadResult && downloadResult.filePath && messageInfo) {
-                    messageInfo.media.downloadPath = downloadResult.filePath
-                    messageInfo.media.downloadedAt = new Date().toISOString()
-                    messageInfo.media.fileExists = true
+                  // 检查是否是媒体组的一部分
+                  if (message.groupedId) {
+                    const groupedIdStr = String(message.groupedId)
+                    
+                    // 检查是否已经处理过这个媒体组
+                    if (processedGroupIds.has(groupedIdStr)) {
+                      console.log(`📱 媒体组 ${groupedIdStr} 已处理，跳过消息 ${message.id}`)
+                    } else {
+                      console.log(`📱 消息 ${message.id} 是媒体组的一部分 (groupedId: ${message.groupedId})`)
+                      // 获取同一媒体组的所有消息
+                      const groupMessages = await this.getGroupedMessages(dialog.entity, message.groupedId, filteredBatch)
+                      
+                      // 下载媒体组中的所有媒体文件
+                      const downloadResults = await this.downloadMediaGroup(groupMessages, channelDir, downloadTypes, onProgress)
+                      
+                      // 更新消息数据中的媒体路径信息
+                      if (downloadResults && downloadResults.length > 0 && messageInfo) {
+                        messageInfo.media.downloadPaths = downloadResults.map(result => result.filePath)
+                        messageInfo.media.downloadedAt = new Date().toISOString()
+                        messageInfo.media.fileExists = true
+                        messageInfo.media.isMediaGroup = true
+                        messageInfo.media.groupedId = message.groupedId
+                      }
+                      
+                      this.downloadedCount += downloadResults.length
+                      onProgress({ downloaded: this.downloadedCount })
+                      
+                      // 标记该媒体组为已处理
+                      processedGroupIds.add(groupedIdStr)
+                    }
+                  } else {
+                    // 单个媒体文件
+                    const downloadResult = await this.downloadMediaFile(message, channelDir, downloadTypes, onProgress)
+                    
+                    // 如果下载成功，更新消息数据中的媒体路径信息
+                    if (downloadResult && downloadResult.filePath && messageInfo) {
+                      messageInfo.media.downloadPath = downloadResult.filePath
+                      messageInfo.media.downloadedAt = new Date().toISOString()
+                      messageInfo.media.fileExists = true
+                    }
+                    
+                    this.downloadedCount++
+                    onProgress({ downloaded: this.downloadedCount })
                   }
-                  
-                  this.downloadedCount++
-                  onProgress({ downloaded: this.downloadedCount })
                 } else {
                   console.log(`⏭️ 消息 ${message.id} 被过滤器排除，跳过下载`)
                   this.skippedCount++
@@ -642,12 +677,13 @@ class DownloadService {
   /**
    * 获取媒体文件名
    */
-  getMediaFileName(media, messageId) {
+  getMediaFileName(media, messageId, groupIndex = null) {
     const timestamp = Date.now()
+    const groupSuffix = groupIndex ? `_${groupIndex}` : ''
     
     if (media.photo || media._ === 'messageMediaPhoto') {
       // 图片没有原始文件名，使用自定义命名
-      return `photo_${messageId}_${timestamp}.jpg`
+      return `photo_${messageId}${groupSuffix}_${timestamp}.jpg`
     }
     
     if (media.document) {
@@ -674,6 +710,17 @@ class DownloadService {
       if (originalFileName) {
         const sanitizedName = this.sanitizeFileName(originalFileName)
         
+        // 如果是媒体组，在文件名中添加索引
+        if (groupIndex) {
+          const fileExtension = this.getExtensionFromFileName(sanitizedName)
+          if (fileExtension) {
+            const nameWithoutExt = sanitizedName.substring(0, sanitizedName.lastIndexOf('.'))
+            return `${nameWithoutExt}${groupSuffix}.${fileExtension}`
+          } else {
+            return `${sanitizedName}${groupSuffix}`
+          }
+        }
+        
         // 检查文件名是否已有有效扩展名
         const fileExtension = this.getExtensionFromFileName(sanitizedName)
         const hasValidExtension = fileExtension !== null
@@ -697,18 +744,18 @@ class DownloadService {
       // 如果没有原始文件名，使用自定义命名
       const mimeExtension = this.getExtensionFromMimeType(doc.mimeType)
       if (mimeExtension && mimeExtension !== 'bin') {
-        return `document_${messageId}_${timestamp}.${mimeExtension}`
+        return `document_${messageId}${groupSuffix}_${timestamp}.${mimeExtension}`
       }
       
-      return `document_${messageId}_${timestamp}.bin`
+      return `document_${messageId}${groupSuffix}_${timestamp}.bin`
     }
     
     if (media.video) {
       // 视频通常没有原始文件名，使用自定义命名
-      return `video_${messageId}_${timestamp}.mp4`
+      return `video_${messageId}${groupSuffix}_${timestamp}.mp4`
     }
     
-    return `file_${messageId}_${timestamp}`
+    return `file_${messageId}${groupSuffix}_${timestamp}`
   }
 
   /**
@@ -1023,7 +1070,7 @@ class DownloadService {
   /**
    * 下载媒体文件
    */
-  async downloadMediaFile(message, channelDir, downloadTypes, onProgress = null) {
+  async downloadMediaFile(message, channelDir, downloadTypes, onProgress = null, groupIndex = null) {
     try {
       // 检查是否被取消
       if (!this.isDownloading) {
@@ -1035,7 +1082,7 @@ class DownloadService {
       if (!media) return null
 
       const mediaType = this.getMediaType(media)
-      const fileName = this.getMediaFileName(media, message.id)
+      const fileName = this.getMediaFileName(media, message.id, groupIndex)
       
       // 确定保存目录
       let subDir = 'others'
@@ -1299,7 +1346,94 @@ class DownloadService {
     }
   }
 
-  
+  /**
+   * 获取媒体组中的所有消息
+   */
+  async getGroupedMessages(entity, groupedId, currentBatch = []) {
+    try {
+      console.log(`🔍 搜索媒体组消息 (groupedId: ${groupedId})`)
+      
+      // 首先从当前批次中查找相同groupedId的消息
+      const groupMessages = currentBatch.filter(msg => 
+        msg.groupedId && (
+          (typeof msg.groupedId === 'bigint' && typeof groupedId === 'bigint' && msg.groupedId === groupedId) ||
+          (typeof msg.groupedId === 'number' && typeof groupedId === 'number' && msg.groupedId === groupedId) ||
+          (Number(msg.groupedId) === Number(groupedId))
+        )
+      )
+      
+      console.log(`📱 在当前批次中找到 ${groupMessages.length} 条媒体组消息`)
+      
+      // 如果在当前批次中找到了多条消息，直接返回
+      if (groupMessages.length > 0) {
+        // 按消息ID排序，确保顺序正确
+        groupMessages.sort((a, b) => a.id - b.id)
+        console.log(`✅ 媒体组消息ID: ${groupMessages.map(m => m.id).join(', ')}`)
+        return groupMessages
+      }
+      
+      // 如果在当前批次中没有找到足够的消息，可能需要额外获取
+      // 由于媒体组的消息通常是连续的，我们尝试获取附近的消息
+      console.log(`⚠️ 在当前批次中未找到完整的媒体组，返回单条消息`)
+      return currentBatch.filter(msg => 
+        msg.groupedId && Number(msg.groupedId) === Number(groupedId)
+      )
+      
+    } catch (error) {
+      console.error('❌ 获取媒体组消息失败:', error)
+      // 如果获取失败，返回空数组
+      return []
+    }
+  }
+
+  /**
+   * 下载媒体组中的所有媒体文件
+   */
+  async downloadMediaGroup(groupMessages, channelDir, downloadTypes, onProgress = null) {
+    const downloadResults = []
+    
+    try {
+      console.log(`📱 开始下载媒体组，包含 ${groupMessages.length} 个媒体文件`)
+      
+      for (let i = 0; i < groupMessages.length; i++) {
+        const message = groupMessages[i]
+        
+        // 检查是否被取消
+        if (!this.isDownloading) {
+          console.log('🛑 下载已取消，停止媒体组下载')
+          break
+        }
+        
+        console.log(`📥 下载媒体组文件 ${i + 1}/${groupMessages.length} (消息ID: ${message.id})`)
+        
+        if (onProgress) {
+          onProgress({
+            status: `正在下载媒体组文件 ${i + 1}/${groupMessages.length} (消息ID: ${message.id})`
+          })
+        }
+        
+        // 下载单个媒体文件，使用特殊的文件名前缀来标识媒体组
+        const downloadResult = await this.downloadMediaFile(message, channelDir, downloadTypes, onProgress, i + 1)
+        
+        if (downloadResult) {
+          downloadResults.push(downloadResult)
+          console.log(`✅ 媒体组文件 ${i + 1} 下载完成: ${downloadResult.fileName}`)
+        }
+        
+        // 媒体组文件间添加小延迟
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+      
+      console.log(`✅ 媒体组下载完成，成功下载 ${downloadResults.length} 个文件`)
+      return downloadResults
+      
+    } catch (error) {
+      console.error('❌ 下载媒体组失败:', error)
+      throw error
+    }
+  }
+
+  // ...existing code...
 }
 
 // 创建单例实例
