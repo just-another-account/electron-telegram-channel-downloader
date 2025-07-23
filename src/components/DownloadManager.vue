@@ -676,6 +676,51 @@
                     </div>
                   </div>
                   
+                  <!-- 下载设置 -->
+                  <div class="form-section mb-8">
+                    <h4 class="section-title mb-4">
+                      <v-icon class="me-2" color="primary">mdi-cog-outline</v-icon>
+                      下载设置
+                    </h4>
+                    
+                    <div class="download-settings">
+                      <v-switch
+                        v-model="useMultiThreadDownload"
+                        color="primary"
+                        class="multi-thread-switch"
+                        hide-details
+                      >
+                        <template v-slot:label>
+                          <div class="d-flex align-center">
+                            <v-icon class="me-2" color="primary">mdi-flash</v-icon>
+                            <div>
+                              <div class="font-weight-medium">启用多线程下载</div>
+                              <div class="text-caption text-medium-emphasis">
+                                同时下载最多5个文件，提升下载速度
+                              </div>
+                            </div>
+                          </div>
+                        </template>
+                      </v-switch>
+                      
+                      <v-expand-transition>
+                        <v-alert
+                          v-if="useMultiThreadDownload"
+                          type="info"
+                          variant="tonal"
+                          density="compact"
+                          rounded="lg"
+                          class="mt-3"
+                        >
+                          <v-icon class="me-2">mdi-information-outline</v-icon>
+                          <span class="text-body-2">
+                            多线程下载将同时下载多个文件，大幅提升下载效率。大文件会自动分块下载以获得更好的性能。
+                          </span>
+                        </v-alert>
+                      </v-expand-transition>
+                    </div>
+                  </div>
+                  
                   <!-- 下载路径 -->
                   <div class="form-section mb-8">
                     <h4 class="section-title mb-4">
@@ -850,20 +895,88 @@
               {{ downloadProgress.status || $t('download.progress.preparing') }}
             </div>
             
-            <!-- 当前文件下载进度 -->
-            <div v-if="downloadProgress.currentFile && downloadProgress.fileProgress !== undefined" class="file-progress-section">
-              <div class="d-flex justify-space-between align-center mb-2">
-                <span class="file-progress-label">{{ $t('download.progress.fileProgress') }}</span>
-                <span class="file-progress-percent">{{ downloadProgress.fileProgress.toFixed(1) }}%</span>
-              </div>
-              <v-progress-linear
-                :model-value="downloadProgress.fileProgress"
-                height="8"
-                color="secondary"
-                rounded
-                class="file-progress-bar"
-              ></v-progress-linear>
+                      <!-- 当前文件下载进度 -->
+          <div v-if="downloadProgress.currentFile && downloadProgress.fileProgress !== undefined" class="file-progress-section">
+            <div class="d-flex justify-space-between align-center mb-2">
+              <span class="file-progress-label">{{ $t('download.progress.fileProgress') }}</span>
+              <span class="file-progress-percent">{{ downloadProgress.fileProgress.toFixed(1) }}%</span>
             </div>
+            <v-progress-linear
+              :model-value="downloadProgress.fileProgress"
+              height="8"
+              color="secondary"
+              rounded
+              class="file-progress-bar"
+            ></v-progress-linear>
+            
+            <!-- 文件下载详细信息 -->
+            <div v-if="downloadProgress.taskProgress" class="mt-2 text-caption">
+              <div class="d-flex justify-space-between">
+                <span>{{ downloadProgress.taskProgress.downloaded }} / {{ downloadProgress.taskProgress.total }}</span>
+                <span>{{ downloadProgress.taskProgress.speed }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 多线程下载信息 -->
+          <div v-if="downloadProgress.multiThread" class="multi-thread-section mt-4">
+            <div class="section-header mb-3">
+              <v-icon class="me-2" color="primary">mdi-flash</v-icon>
+              <span class="font-weight-bold">多线程下载状态</span>
+            </div>
+            
+            <div class="multi-thread-stats">
+              <v-row dense>
+                <v-col cols="6">
+                  <div class="stat-card">
+                    <div class="stat-icon">
+                      <v-icon color="success">mdi-download-multiple</v-icon>
+                    </div>
+                    <div class="stat-content">
+                      <div class="stat-value">{{ downloadProgress.multiThread.activeDownloads }}</div>
+                      <div class="stat-label">并发下载</div>
+                    </div>
+                  </div>
+                </v-col>
+                <v-col cols="6">
+                  <div class="stat-card">
+                    <div class="stat-icon">
+                      <v-icon color="warning">mdi-clock-outline</v-icon>
+                    </div>
+                    <div class="stat-content">
+                      <div class="stat-value">{{ downloadProgress.multiThread.queueLength }}</div>
+                      <div class="stat-label">队列等待</div>
+                    </div>
+                  </div>
+                </v-col>
+              </v-row>
+              
+              <v-row dense class="mt-2">
+                <v-col cols="6">
+                  <div class="stat-card">
+                    <div class="stat-icon">
+                      <v-icon color="info">mdi-speedometer</v-icon>
+                    </div>
+                    <div class="stat-content">
+                      <div class="stat-value">{{ downloadProgress.multiThread.totalSpeed }}</div>
+                      <div class="stat-label">总速度</div>
+                    </div>
+                  </div>
+                </v-col>
+                <v-col cols="6">
+                  <div class="stat-card">
+                    <div class="stat-icon">
+                      <v-icon color="primary">mdi-database</v-icon>
+                    </div>
+                    <div class="stat-content">
+                      <div class="stat-value">{{ downloadProgress.multiThread.totalDownloaded }}</div>
+                      <div class="stat-label">已下载</div>
+                    </div>
+                  </div>
+                </v-col>
+              </v-row>
+            </div>
+          </div>
           </div>
           
           <v-divider class="my-6"></v-divider>
@@ -948,6 +1061,7 @@ const filenameFilter = ref('')
 const filterMode = ref('include') // 'include' 或 'exclude'
 const minFileSize = ref(null) // 最小文件大小 (KB)
 const maxFileSize = ref(null) // 最大文件大小 (KB)
+const useMultiThreadDownload = ref(true) // 是否启用多线程下载
 
 // 下载进度
 const downloadProgress = ref({
@@ -1223,6 +1337,7 @@ async function startDownload() {
       filterMode: filterMode.value,
       minFileSize: minFileSize.value || null,
       maxFileSize: maxFileSize.value || null,
+      useMultiThreadDownload: useMultiThreadDownload.value,
       onProgress: (progress) => {
         downloadProgress.value = { ...downloadProgress.value, ...progress }
       }
@@ -1971,6 +2086,126 @@ onMounted(async () => {
 
 .file-progress-bar {
   border-radius: 6px !important;
+}
+
+/* 多线程下载样式 */
+.multi-thread-section {
+  background: rgba(var(--v-theme-primary), 0.05);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.1);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+  color: rgb(var(--v-theme-primary));
+}
+
+.multi-thread-stats {
+  width: 100%;
+}
+
+.stat-card {
+  background: rgba(var(--v-theme-surface), 0.8);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.1);
+  border-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.stat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 2px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface-variant));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* 暗色主题适配 */
+.v-theme--dark .multi-thread-section {
+  background: rgba(var(--v-theme-primary), 0.08);
+  border-color: rgba(var(--v-theme-primary), 0.15);
+}
+
+.v-theme--dark .stat-card {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(var(--v-theme-primary), 0.15);
+}
+
+.v-theme--dark .stat-card:hover {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(var(--v-theme-primary), 0.25);
+}
+
+.v-theme--dark .stat-icon {
+  background: rgba(51, 65, 85, 0.6);
+}
+
+/* 下载设置样式 */
+.download-settings {
+  padding: 16px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 12px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.1);
+}
+
+.multi-thread-switch {
+  width: 100%;
+}
+
+.multi-thread-switch .v-label {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+}
+
+.multi-thread-switch .v-switch__track {
+  background: rgba(var(--v-theme-surface-variant), 0.8) !important;
+}
+
+.multi-thread-switch .v-switch__thumb {
+  background: rgb(var(--v-theme-primary)) !important;
+}
+
+/* 暗色主题适配 */
+.v-theme--dark .download-settings {
+  background: rgba(30, 41, 59, 0.3);
+  border-color: rgba(var(--v-theme-primary), 0.15);
 }
 
 .download-record-content {

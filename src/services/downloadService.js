@@ -1,5 +1,6 @@
 import telegramService from './telegramService.js'
 import { fs } from '../utils/electronAPI.js'
+import multiThreadDownloadManager from './multiThreadDownloadManager.js'
 
 class DownloadService {
   constructor() {
@@ -9,13 +10,15 @@ class DownloadService {
     this.errorCount = 0
     this.skippedCount = 0
     this.messagesPerFile = 500 // 每个文件500条消息
+    this.useMultiThreadDownload = true // 启用多线程下载
+    this.downloadResults = new Map() // 存储下载结果
   }
 
   /**
    * 下载频道内容
    */
   async downloadChannelContent(config) {
-    const { dialog, downloadTypes, startMessageId, endMessageId, downloadPath, filenameFilter, filterMode, minFileSize, maxFileSize, onProgress } = config
+    const { dialog, downloadTypes, startMessageId, endMessageId, downloadPath, filenameFilter, filterMode, minFileSize, maxFileSize, useMultiThreadDownload, onProgress } = config
     
     this.isDownloading = true
     this.currentDownloadConfig = config
@@ -27,6 +30,24 @@ class DownloadService {
     let allMessageData = []
     let recordSaved = false
     let processedGroupIds = new Set() // 用于跟踪已处理的媒体组
+    
+    // 根据用户设置决定是否使用多线程下载
+    this.useMultiThreadDownload = useMultiThreadDownload !== false // 默认启用
+    
+    // 初始化多线程下载管理器
+    if (this.useMultiThreadDownload) {
+      this.downloadResults.clear()
+      
+      // 设置进度回调
+      const multiThreadProgressCallback = (progressData) => {
+        this.handleMultiThreadProgress(progressData, onProgress)
+      }
+      
+      multiThreadDownloadManager.addProgressCallback(multiThreadProgressCallback)
+      
+      // 确保下载管理器处于清洁状态
+      multiThreadDownloadManager.stopAllDownloads()
+    }
 
     try {
       // 创建基础目录
@@ -198,37 +219,72 @@ class DownloadService {
                       // 获取同一媒体组的所有消息
                       const groupMessages = await this.getGroupedMessages(dialog.entity, message.groupedId, filteredBatch)
                       
-                      // 下载媒体组中的所有媒体文件
-                      const downloadResults = await this.downloadMediaGroup(groupMessages, channelDir, downloadTypes, onProgress)
-                      
-                      // 更新消息数据中的媒体路径信息
-                      if (downloadResults && downloadResults.length > 0 && messageInfo) {
-                        messageInfo.media.downloadPaths = downloadResults.map(result => result.filePath)
-                        messageInfo.media.downloadedAt = new Date().toISOString()
-                        messageInfo.media.fileExists = true
-                        messageInfo.media.isMediaGroup = true
-                        messageInfo.media.groupedId = message.groupedId
+                      if (this.useMultiThreadDownload) {
+                        // 使用多线程下载管理器下载媒体组
+                        for (let groupIndex = 0; groupIndex < groupMessages.length; groupIndex++) {
+                          const groupMessage = groupMessages[groupIndex]
+                          await multiThreadDownloadManager.addDownloadTask(
+                            groupMessage, 
+                            channelDir, 
+                            downloadTypes, 
+                            groupIndex + 1
+                          )
+                        }
+                        
+                        // 更新消息数据中的媒体路径信息（稍后从结果中获取）
+                        if (messageInfo) {
+                          messageInfo.media.isMediaGroup = true
+                          messageInfo.media.groupedId = message.groupedId
+                          messageInfo.media.downloadedAt = new Date().toISOString()
+                        }
+                      } else {
+                        // 使用原有的同步下载方式
+                        const downloadResults = await this.downloadMediaGroup(groupMessages, channelDir, downloadTypes, onProgress)
+                        
+                        // 更新消息数据中的媒体路径信息
+                        if (downloadResults && downloadResults.length > 0 && messageInfo) {
+                          messageInfo.media.downloadPaths = downloadResults.map(result => result.filePath)
+                          messageInfo.media.downloadedAt = new Date().toISOString()
+                          messageInfo.media.fileExists = true
+                          messageInfo.media.isMediaGroup = true
+                          messageInfo.media.groupedId = message.groupedId
+                        }
+                        
+                        this.downloadedCount += downloadResults.length
+                        onProgress({ downloaded: this.downloadedCount })
                       }
-                      
-                      this.downloadedCount += downloadResults.length
-                      onProgress({ downloaded: this.downloadedCount })
                       
                       // 标记该媒体组为已处理
                       processedGroupIds.add(groupedIdStr)
                     }
                   } else {
                     // 单个媒体文件
-                    const downloadResult = await this.downloadMediaFile(message, channelDir, downloadTypes, onProgress)
-                    
-                    // 如果下载成功，更新消息数据中的媒体路径信息
-                    if (downloadResult && downloadResult.filePath && messageInfo) {
-                      messageInfo.media.downloadPath = downloadResult.filePath
-                      messageInfo.media.downloadedAt = new Date().toISOString()
-                      messageInfo.media.fileExists = true
+                    if (this.useMultiThreadDownload) {
+                      // 使用多线程下载管理器
+                      await multiThreadDownloadManager.addDownloadTask(
+                        message, 
+                        channelDir, 
+                        downloadTypes
+                      )
+                      
+                      // 更新消息数据中的媒体路径信息（稍后从结果中获取）
+                      if (messageInfo) {
+                        messageInfo.media.downloadedAt = new Date().toISOString()
+                      }
+                    } else {
+                      // 使用原有的同步下载方式
+                      const downloadResult = await this.downloadMediaFile(message, channelDir, downloadTypes, onProgress)
+                      
+                      // 如果下载成功，更新消息数据中的媒体路径信息
+                      if (downloadResult && downloadResult.filePath && messageInfo) {
+                        messageInfo.media.downloadPath = downloadResult.filePath
+                        messageInfo.media.downloadedAt = new Date().toISOString()
+                        messageInfo.media.fileExists = true
+                      }
+                      
+                      this.downloadedCount++
+                      onProgress({ downloaded: this.downloadedCount })
                     }
-                    
-                    this.downloadedCount++
-                    onProgress({ downloaded: this.downloadedCount })
                   }
                 } else {
                   console.log(`⏭️ 消息 ${message.id} 被过滤器排除，跳过下载`)
@@ -298,6 +354,71 @@ class DownloadService {
       
       console.log(`🎉 流式下载完成，总共处理了 ${totalProcessed} 条消息`)
       
+      // 如果使用了多线程下载，等待所有下载完成
+      if (this.useMultiThreadDownload) {
+        onProgress({ 
+          status: '等待多线程下载完成...',
+          current: totalProcessed 
+        })
+        
+        // 等待所有下载任务完成
+        let waitTime = 0
+        const maxWaitTime = 300000 // 最大等待5分钟
+        const checkInterval = 1000 // 每秒检查一次
+        
+        while (multiThreadDownloadManager.getStats().activeDownloads > 0 && waitTime < maxWaitTime) {
+          await new Promise(resolve => setTimeout(resolve, checkInterval))
+          waitTime += checkInterval
+          
+          if (!this.isDownloading) {
+            // 用户取消了下载
+            break
+          }
+        }
+        
+        // 收集多线程下载结果并更新消息数据
+        console.log('📊 收集多线程下载结果...')
+        for (const messageInfo of allMessageData) {
+          if (messageInfo.media) {
+            // 查找对应的下载结果
+            const messageId = messageInfo.id
+            
+            if (messageInfo.media.isMediaGroup) {
+              // 媒体组：查找所有相关的下载结果
+              const groupResults = []
+              this.downloadResults.forEach((result, taskId) => {
+                if (taskId.startsWith(`${messageId}_`) && taskId !== `${messageId}_0`) {
+                  groupResults.push(result)
+                }
+              })
+              
+              if (groupResults.length > 0) {
+                messageInfo.media.downloadPaths = groupResults
+                  .filter(r => r.success && !r.alreadyExists)
+                  .map(r => r.filePath)
+                messageInfo.media.fileExists = groupResults.some(r => r.success)
+              }
+            } else {
+              // 单个文件：查找单个下载结果
+              const taskId = `${messageId}_0`
+              const result = this.downloadResults.get(taskId)
+              
+              if (result && result.success) {
+                messageInfo.media.downloadPath = result.filePath
+                messageInfo.media.fileExists = true
+              }
+            }
+          }
+        }
+        
+        // 获取最终的下载统计
+        const finalStats = multiThreadDownloadManager.getStats()
+        this.downloadedCount = finalStats.completed
+        this.errorCount = finalStats.failed
+        
+        console.log(`✅ 多线程下载统计: 完成 ${finalStats.completed}, 失败 ${finalStats.failed}`)
+      }
+      
       // 分文件保存消息数据
       await this.saveMessagesJsonByChunks(allMessageData, `${channelDir}/json`)
       
@@ -319,7 +440,8 @@ class DownloadService {
         messageRange: allMessageData.length > 0 ? {
           min: Math.min(...allMessageData.map(m => m.id)),
           max: Math.max(...allMessageData.map(m => m.id))
-        } : null
+        } : null,
+        useMultiThread: this.useMultiThreadDownload
       }
       
     } catch (error) {
@@ -407,10 +529,84 @@ class DownloadService {
   }
 
   /**
+   * 处理多线程下载进度
+   */
+  handleMultiThreadProgress(progressData, onProgress) {
+    try {
+      if (progressData.type === 'overall') {
+        // 更新总体统计
+        const stats = progressData.stats
+        this.downloadedCount = stats.completed
+        this.errorCount = stats.failed
+        
+        onProgress({
+          downloaded: this.downloadedCount,
+          errors: this.errorCount,
+          status: `多线程下载中... (${stats.activeDownloads}个并发, ${stats.queueLength}个排队)`,
+          multiThread: {
+            activeDownloads: stats.activeDownloads,
+            queueLength: stats.queueLength,
+            totalSpeed: this.formatSpeed(stats.speed),
+            totalDownloaded: this.formatFileSize(stats.totalDownloaded),
+            totalSize: this.formatFileSize(stats.totalSize)
+          }
+        })
+      } else if (progressData.type === 'task') {
+        // 更新当前文件进度
+        const progress = progressData.progress
+        onProgress({
+          currentFile: progressData.fileName,
+          fileProgress: progress.total > 0 ? (progress.downloaded / progress.total * 100) : 0,
+          status: `下载中: ${progressData.fileName} (${this.formatSpeed(progress.speed)})`,
+          taskProgress: {
+            downloaded: this.formatFileSize(progress.downloaded),
+            total: this.formatFileSize(progress.total),
+            speed: this.formatSpeed(progress.speed)
+          }
+        })
+      } else if (progressData.type === 'completed') {
+        // 文件下载完成
+        this.downloadResults.set(progressData.taskId, progressData.result)
+        console.log(`✅ 多线程下载完成: ${progressData.fileName}`)
+      } else if (progressData.type === 'failed') {
+        // 文件下载失败
+        console.error(`❌ 多线程下载失败: ${progressData.fileName}, 错误: ${progressData.error}`)
+      }
+    } catch (error) {
+      console.error('处理多线程进度时出错:', error)
+    }
+  }
+
+  /**
+   * 格式化文件大小
+   */
+  formatFileSize(bytes) {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  /**
+   * 格式化下载速度
+   */
+  formatSpeed(bytesPerSecond) {
+    if (bytesPerSecond === 0) return '0 B/s'
+    return this.formatFileSize(bytesPerSecond) + '/s'
+  }
+
+  /**
    * 取消下载
    */
   cancelDownload() {
     this.isDownloading = false
+    
+    // 停止多线程下载
+    if (this.useMultiThreadDownload) {
+      multiThreadDownloadManager.stopAllDownloads()
+    }
+    
     console.log('🛑 下载已取消')
   }
 
