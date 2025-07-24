@@ -703,21 +703,7 @@
                         </template>
                       </v-switch>
                       
-                      <v-expand-transition>
-                        <v-alert
-                          v-if="useMultiThreadDownload"
-                          type="info"
-                          variant="tonal"
-                          density="compact"
-                          rounded="lg"
-                          class="mt-3"
-                        >
-                          <v-icon class="me-2">mdi-information-outline</v-icon>
-                          <span class="text-body-2">
-                            多线程下载将同时下载多个文件，大幅提升下载效率。大文件会自动分块下载以获得更好的性能。
-                          </span>
-                        </v-alert>
-                      </v-expand-transition>
+
                     </div>
                   </div>
                   
