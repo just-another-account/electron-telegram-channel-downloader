@@ -1,29 +1,77 @@
-# 📋 Changelog
+# 版本更新日志
 
-All notable changes to this project will be documented in this file.
+## [v1.2.0] - 2024-01-XX
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### 🚀 重大新功能
+- **多线程下载系统**: 全新的多线程下载架构，大幅提升下载效率
+  - 支持最多5个文件并发下载
+  - 智能文件分块下载（大于2MB文件自动分为最多4块）
+  - 实时下载速度监控和进度显示
+  - 自动重试机制（最多3次重试）
 
-## [1.1.8] - 2025-07-08
+### ✨ 功能增强
+- **下载设置面板**: 新增下载配置选项
+  - 可选择启用/禁用多线程下载
+  - 用户友好的设置界面
+  - 实时设置切换，无需重启
 
-### Added
-- **Multi-media message support**: Now downloads all media files from messages containing multiple media items (media groups/albums)
-- **Dialog filter system**: Added search and filter functionality above the dialog list for easier dialog management
-  - Search dialogs by name, title, or ID
-  - Filter dialogs by type (channels, groups, users)
-  - Real-time filtering with result statistics
-  - Smart empty state handling with reset options
-- Enhanced file naming for media groups with sequential numbering
-- Improved media group detection and handling
-- Internationalization support for filter functionality (Chinese and English)
+- **增强的进度监控**: 全新的多层级进度显示
+  - 总体下载进度
+  - 单文件详细进度
+  - 多线程状态面板（并发数、队列长度、总速度）
+  - 文件下载速度和大小格式化显示
 
-### Changed
-- Enhanced download service to better handle media groups and albums
-- Updated file naming convention to distinguish media group files
+### 🎨 界面改进
+- **多线程状态面板**: 实时显示下载状态
+  - 并发下载数量
+  - 队列等待数量
+  - 总下载速度
+  - 已下载数据量
+- **优化的进度对话框**: 更清晰的进度信息展示
+- **响应式设计**: 适配不同屏幕尺寸的多线程状态显示
 
-### Fixed
-- Issue where only the first media file was downloaded from messages containing multiple media items
+### 🔧 技术改进
+- **新增 MultiThreadDownloadManager**: 专门的多线程下载管理器
+  - 智能队列管理
+  - 并发控制和资源管理
+  - 分块下载和自动合并
+  - 进度回调系统
+
+- **增强的 DownloadService**: 集成多线程下载支持
+  - 多线程/单线程模式切换
+  - 统一的进度处理接口
+  - 改进的错误处理机制
+
+### 📚 文档更新
+- **多线程下载说明文档**: 详细的功能说明和使用指南
+- **测试文件**: 提供功能验证和调试工具
+- **技术文档**: 完整的实现原理和配置说明
+
+### 🛠️ 性能优化
+- **内存管理**: 优化大文件处理，避免内存溢出
+- **网络优化**: 智能重试策略和请求间隔控制
+- **并发控制**: 防止系统资源过载的保护机制
+
+### 🐛 修复问题
+- 优化文件下载的错误处理
+- 改进下载进度计算准确性
+- 修复大文件下载时的内存问题
+
+### 💡 用户体验提升
+- 默认启用多线程下载以获得最佳性能
+- 直观的下载状态指示器
+- 实时的下载速度和剩余时间显示
+- 简化的设置界面
+
+### 🔄 兼容性
+- 向后兼容原有的单线程下载模式
+- 支持现有的下载配置和过滤设置
+- 兼容所有文件类型和媒体组下载
+
+---
+
+## [v1.1.8] - 2024-01-XX
+- 之前的版本更新...
 
 ## [Unreleased]
 
